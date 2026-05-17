@@ -1,0 +1,11 @@
+test.ipynb
+test2.ipynb
+results old.ipynb
+train_NS_weights.ipynb
+__pycache__
+*.pyc
+*.txt
+test.ipynb
+test copy.ipynb
+results2.ipynb
+experiments2.py
