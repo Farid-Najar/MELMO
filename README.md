@@ -1,18 +1,19 @@
 # MELMO: Moreau Envelope with Linear Minimization Oracle
 
-A Python implementation of the MELMO algorithm for non-convex composite optimization problems.
+A Python implementation of the MELMO algorithm for non-smooth composite optimization problems using a geometry aware descent direction.
 
 ## Features
 
 - **MELMO Algorithm**: Moreau Envelope with Linear Minimization Oracle for non-convex problems
 - **Multiple Optimization Methods**:
   - Subgradient descent
-  - Variable Smoothing Bundle Method (VS)
+  - Variable Smoothing from Bohm-Wright (VS)
   - MELMO variants with different step size rules
 - **Supported Regularizers**:
   - Minimax Concave Penalty (MCP)
   - L1 and L2 norms
   - Spectral and nuclear norms
+  - Any custom regulizers can be used
 - **Linear Minimization Oracles (LMOs)**:
   - Frobenius norm ball
   - Spectral norm ball (Newton-Schulz method)
@@ -81,6 +82,8 @@ result = melmo(
 
 ### Running Experiments
 
+You can either run the results.ipynb notebook or run the following code
+
 ```python
 from experiments import run_experiment, plot_loss, plot_primal_gap_and_penalty
 
@@ -122,19 +125,17 @@ min_x f(x) + g(T(x))
 ```
 
 where:
-- `f` is smooth and convex
-- `g` is non-convex and proximable
+
+- `f` is smooth
+- `g` is non-smooth and weakly-convex
 - `T` is a linear operator
 
 The algorithm uses:
-- Moreau envelope smoothing of the non-convex term
+
+- Moreau envelope smoothing of the non-smooth term
 - Frank-Wolfe style linear minimization steps
 - Diminishing step sizes for convergence guarantees
 
 ## Citations
 
 If you use this code in your research, please cite the corresponding paper.
-
-## License
-
-[Add your license here]
