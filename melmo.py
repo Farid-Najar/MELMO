@@ -1,52 +1,30 @@
+from ty_extensions import Unknown
 import numpy as np
 from numba import njit
 
 from utils import lmo_fro, lmo_spectral, grad_gb, mcp, prox_mcp
 
-class GradientDescent:
-    def __init__(
-        self,
-        gamma = 1e-3,
-        lmo = None,
-        ):
-        """Gradient descent scheme and algorithm
+from typing import Callable
 
-        Parameters
-        ----------
-        gamma : float, optional
-            step size (may be time dependent), by default 1e-3
-        lmo : function, optional
-            the linear minimization oracle function, by default None
-        """
-        self.gamma = gamma
-        self.lmo = lmo
-    
-    def update(self, x, grad, gamma = None):
-        if gamma is None:
-            gamma = self.gamma
-        g = grad(x)
-            
-        d = -g if self.lmo is None else self.lmo(g)
-        return x + gamma * d
-    
-    
 def _update_gamons(
     xt : np.ndarray,
     gt : np.ndarray,
     gamma : float,
-    lmo : callable,
+    lmo : Callable,
     ):
+    
     dt = lmo(gt)
+    
     return xt + gamma * dt
 
 def melmo(
     x0,
-    f : callable,
-    grad_f : callable,
-    g : callable = mcp,
+    f : Callable,
+    grad_f : Callable,
+    g : Callable = mcp,
     prox = prox_mcp,
     lmo = lmo_spectral,
-    T : np.ndarray = None,
+    T : np.ndarray | None = None,
     gamma = 1/3,
     beta = 1.,
     p = 7/12,
@@ -54,7 +32,6 @@ def melmo(
     max_iter = 1_000,
     store_xt_every = 0,
     ):
-    # TODO
     
     if T is None:
         T = np.eye(x0.shape[0])
@@ -104,9 +81,9 @@ def melmo(
 
 def epoch_melmo(
     x0,
-    f : callable,
-    grad_f : callable,
-    g : callable = mcp,
+    f : Callable,
+    grad_f : Callable,
+    g : Callable = mcp,
     prox = prox_mcp,
     lmo = lmo_spectral,
     epsilon = 1e-3,

@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import os
 import pickle
+from typing import Callable
 
 from utils import  prox_mcp, mcp, mcp_torch, lmo_spectral, lmo_l2, lmo_nuclear, noisy_image
 from BCD import load_dataset
@@ -16,14 +17,14 @@ def run_experiment(
     dataset_name: str = 'camera',
     noise_type: str = 'salt_and_pepper',
     noise_level: float = 0.1,
-    T : callable = lambda x : x,
-    T_torch : callable = lambda x : x,
-    T_adj : callable = lambda x : x,
+    T : Callable = lambda x : x,
+    T_torch : Callable = lambda x : x,
+    T_adj : Callable = lambda x : x,
     K: int = 5_000,
-    g: callable = lambda W : np.sum(mcp(W)),
-    g_torch: callable = lambda W : torch.sum(mcp_torch(W)),
-    prox: callable = prox_mcp,
-    lmo: callable = lambda M : lmo_spectral(M, 1., 6),
+    g: Callable = lambda W : np.sum(mcp(W)),
+    g_torch: Callable = lambda W : torch.sum(mcp_torch(W)),
+    prox: Callable = prox_mcp,
+    lmo: Callable = lambda M : lmo_spectral(M, 1., 6),
     comment: str = '',
     save: bool = False,
     scale: bool = True,
@@ -67,27 +68,29 @@ def run_experiment(
 
 
     # Running the experiments
-    loss_NSD, penalty_NSD, ssims_NSD, WHs_NSD = run_melmo2(
+    loss_NSD, penalty_NSD, ssims_NSD, dist_W_prox, WHs_NSD = run_melmo2(
         D, g = g, prox = prox, T = T, T_adj = T_adj, max_iter = 2**K, lmo = lambda M : lmo_spectral(M, 1., 6), 
         original = Y,
     )
-    print(f'Gamons (regular) loss: {loss_NSD[-1]}')
-    results['gamons (regular)'] = {
+    print(f'melmo (regular) loss: {loss_NSD[-1]}')
+    results['melmo (regular)'] = {
         'loss': loss_NSD,
         'penalty': penalty_NSD,
         'ssims': ssims_NSD,
+        'dist_W_prox': dist_W_prox,
         'WH': WHs_NSD,
     }
     
-    loss_NSD, penalty_NSD, ssims_NSD, WHs_NSD = run_melmo2_epoch(
+    loss_NSD, penalty_NSD, ssims_NSD, dist_W_prox, WHs_NSD = run_melmo2_epoch(
         D, g = g, prox = prox, T = T, T_adj = T_adj, max_K = K, lmo = lambda M : lmo_l2(M, 1.), 
         original = Y,
     )
-    print(f'Gamons (epochs) loss: {loss_NSD[-1]}')
-    results['gamons (epochs)'] = {
+    print(f'melmo (epochs) loss: {loss_NSD[-1]}')
+    results['melmo (epochs)'] = {
         'loss': loss_NSD,
         'penalty': penalty_NSD,
         'ssims': ssims_NSD,
+        'dist_W_prox': dist_W_prox,
         'WH': WHs_NSD,
     }
     
@@ -139,18 +142,42 @@ def plot_images(results: dict):
     plt.title('Original')
     plt.show()
         
-    W = results['gamons (regular)']['WH']
+    W = results['melmo (regular)']['WH']
     img = plt.imshow(W)
     img.set_cmap('gray')
     plt.axis('off')
-    plt.title('Gamons (regular)')
+    plt.title('melmo (regular)')
     plt.show()
     
-    W = results['gamons (epochs)']['WH']
+    W = results['melmo (epochs)']['WH']
     img = plt.imshow(W)
     img.set_cmap('gray')
     plt.axis('off')
-    plt.title('Gamons (epochs)')
+    plt.title('melmo (epochs)')
+    plt.show()
+    
+def plot_smoothing_loss(results: dict):
+    K = results['K']
+    scatter_period = 2**K // 20
+    norm_D = results['norm']
+
+    x = np.arange(len(results['melmo (regular)']['dist_W_prox']))[::scatter_period]
+    x = np.logspace(0, np.log10(len(results['melmo (regular)']['dist_W_prox'])-1), num=len(x), endpoint=True).astype(int)
+    
+    plt.loglog(results['melmo (regular)']['dist_W_prox'])
+    plt.scatter(x, results['melmo (regular)']['dist_W_prox'][x], label = 'melmo (regular)', marker="^")
+    print(f"melmo (regular) : {results['melmo (regular)']['dist_W_prox'][-1]:.3e}")
+    
+    plt.loglog(results['melmo (epochs)']['dist_W_prox'])
+    plt.scatter(x, results['melmo (epochs)']['dist_W_prox'][x], label = 'melmo (epochs)', marker="s")
+    print(f"melmo (epochs) : {results['melmo (epochs)']['dist_W_prox'][-1]:.3e}")
+    
+    plt.ylabel(r'$\|TW_k - prox_{\beta_k}(TW_k)\|_F$')
+    plt.xlabel('Iterations')
+    plt.title('The proximal gap')
+
+    plt.legend()
+    plt.savefig(f"denoising_results/{results['dataset_name']}/proximalGap_rank.png")
     plt.show()
     
 
@@ -160,16 +187,16 @@ def plot_loss(results: dict):
     scatter_period = 2**K // 20
     norm_D = results['norm']
 
-    x = np.arange(len(results['gamons (regular)']['loss']))[::scatter_period]
-    x = np.logspace(0, np.log10(len(results['gamons (regular)']['loss'])-1), num=len(x), endpoint=True).astype(int)
+    x = np.arange(len(results['melmo (regular)']['loss']))[::scatter_period]
+    x = np.logspace(0, np.log10(len(results['melmo (regular)']['loss'])-1), num=len(x), endpoint=True).astype(int)
     
-    plt.loglog(results['gamons (regular)']['loss']/norm_D)
-    plt.scatter(x, results['gamons (regular)']['loss'][x]/norm_D, label = 'GAMONS (regular)', marker="o")
-    print(f"GAMONS (regular) : {results['gamons (regular)']['loss'][-1]/norm_D:.3e}")
+    plt.loglog(results['melmo (regular)']['loss']/norm_D)
+    plt.scatter(x, results['melmo (regular)']['loss'][x]/norm_D, label = 'melmo (regular)', marker="o")
+    print(f"melmo (regular) : {results['melmo (regular)']['loss'][-1]/norm_D:.3e}")
     
-    plt.loglog(results['gamons (epochs)']['loss']/norm_D)
-    plt.scatter(x, results['gamons (epochs)']['loss'][x]/norm_D, label = 'GAMONS (epochs)', marker="v")
-    print(f"GAMONS (epochs) : {results['gamons (epochs)']['loss'][-1]/norm_D:.3e}")
+    plt.loglog(results['melmo (epochs)']['loss']/norm_D)
+    plt.scatter(x, results['melmo (epochs)']['loss'][x]/norm_D, label = 'melmo (epochs)', marker="v")
+    print(f"melmo (epochs) : {results['melmo (epochs)']['loss'][-1]/norm_D:.3e}")
     
     plt.ylabel(r'$\frac{\|Y - WH\|_F^2}{\|Y\|_F^2}$')
     plt.xlabel('Iterations')
@@ -184,16 +211,16 @@ def plot_ssims(results: dict):
     scatter_period = 2**K // 20
     norm_D = results['norm']
 
-    x = np.arange(len(results['gamons (epochs)']['ssims']))[::scatter_period]
-    x = np.logspace(0, np.log10(len(results['gamons (epochs)']['ssims'])-1), num=len(x), endpoint=True).astype(int)
+    x = np.arange(len(results['melmo (epochs)']['ssims']))[::scatter_period]
+    x = np.logspace(0, np.log10(len(results['melmo (epochs)']['ssims'])-1), num=len(x), endpoint=True).astype(int)
     
-    plt.loglog(results['gamons (regular)']['ssims'])
-    plt.scatter(x, results['gamons (regular)']['ssims'][x], label = 'GAMONS (regular)', marker="o")
-    print(f"GAMONS (regular) : {results['gamons (regular)']['ssims'][-1]:.3e}")
+    plt.loglog(results['melmo (regular)']['ssims'])
+    plt.scatter(x, results['melmo (regular)']['ssims'][x], label = 'melmo (regular)', marker="o")
+    print(f"melmo (regular) : {results['melmo (regular)']['ssims'][-1]:.3e}")
     
-    plt.loglog(results['gamons (epochs)']['ssims'])
-    plt.scatter(x, results['gamons (epochs)']['ssims'][x], label = 'GAMONS (epochs)', marker="v")
-    print(f"GAMONS (epochs) : {results['gamons (epochs)']['ssims'][-1]:.3e}")
+    plt.loglog(results['melmo (epochs)']['ssims'])
+    plt.scatter(x, results['melmo (epochs)']['ssims'][x], label = 'melmo (epochs)', marker="v")
+    print(f"melmo (epochs) : {results['melmo (epochs)']['ssims'][-1]:.3e}")
 
     
     plt.ylabel(r'$SSIM$')
@@ -206,7 +233,7 @@ def plot_ssims(results: dict):
     
 def plot_primal_gap_and_penalty(
     results: dict, 
-    g:callable = lambda W : np.sum(mcp(W)),
+    g:Callable = lambda W : np.sum(mcp(W)),
     ):
     
     K = results['K']
@@ -216,17 +243,17 @@ def plot_primal_gap_and_penalty(
     x = np.arange(K)[::scatter_period]
     x = np.logspace(0, np.log10(K-1), num=len(x), endpoint=True).astype(int)
     
-    g_VS = results['gamons (regular)']['penalty']
-    ls_VS = results['gamons (regular)']['loss'] + g_VS
+    g_VS = results['melmo (regular)']['penalty']
+    ls_VS = results['melmo (regular)']['loss'] + g_VS
     plt.loglog(ls_VS)
-    plt.scatter(x, ls_VS[x], label = 'GAMONS (regular)', marker="o")
-    print(f"GAMONS (regular) : {ls_VS[-1]:.3e}")
+    plt.scatter(x, ls_VS[x], label = 'melmo (regular)', marker="o")
+    print(f"melmo (regular) : {ls_VS[-1]:.3e}")
     
-    g_NSD = results['gamons (epochs)']['penalty']
-    ls_NSD = results['gamons (epochs)']['loss'] + g_NSD
+    g_NSD = results['melmo (epochs)']['penalty']
+    ls_NSD = results['melmo (epochs)']['loss'] + g_NSD
     plt.loglog(ls_NSD)  
-    plt.scatter(x, ls_NSD[x], label = 'GAMONS (epochs)', marker="v")
-    print(f"GAMONS (epochs) : {ls_NSD[-1]:.3e}")
+    plt.scatter(x, ls_NSD[x], label = 'melmo (epochs)', marker="v")
+    print(f"melmo (epochs) : {ls_NSD[-1]:.3e}")
     
     
     plt.ylabel(r'$F(x_k)$')
@@ -242,8 +269,8 @@ def plot_primal_gap_and_penalty(
     print(f"VS : {g_VS[-1]:.3e}")
     
     plt.loglog(g_NSD)
-    plt.scatter(x, g_NSD[x], label = 'GAMONS (p = 2/3, q = 1/3)', marker="v")
-    print(f"GAMONS (p = 2/3, q = 1/3) : {g_NSD[-1]:.3e}")
+    plt.scatter(x, g_NSD[x], label = 'melmo (p = 2/3, q = 1/3)', marker="v")
+    print(f"melmo (p = 2/3, q = 1/3) : {g_NSD[-1]:.3e}")
 
     plt.legend()
     plt.savefig(f"denoising_results/{results['dataset_name']}/Pk.png")

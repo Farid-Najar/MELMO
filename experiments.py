@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import os
 import pickle
+from typing import Callable
 
 from utils import  prox_mcp, mcp, mcp_torch, lmo_spectral
 from BCD import load_dataset
@@ -16,10 +17,10 @@ def run_experiment(
     dataset_name: str = 'camera',
     rank: int = 10,
     K: int = 5_000,
-    g: callable = lambda W : np.sum(mcp(W)),
-    g_torch: callable = lambda W : torch.sum(mcp_torch(W)),
-    prox: callable = prox_mcp,
-    lmo: callable = lambda M : lmo_spectral(M, 1., 6),
+    g: Callable = lambda W : np.sum(mcp(W)),
+    g_torch: Callable = lambda W : torch.sum(mcp_torch(W)),
+    prox: Callable = prox_mcp,
+    lmo: Callable = lambda M : lmo_spectral(M, 1., 6),
     comment: str = '',
     save: bool = True,
     # store_WH_every: int = 1,
@@ -62,8 +63,8 @@ def run_experiment(
     loss_NSD, penalty_NSD, dist_W_prox_NSD, WHs_NSD = run_melmo(
         D, g, rank, prox, max_iter = K, lmo = lmo,
     )
-    print(f'Gamons (p = 2/3. q = 1/4) loss: {loss_NSD[-1]}')
-    results['gamons (p = 2/3, q = 1/4)'] = {
+    print(f'melmo (p = 2/3. q = 1/4) loss: {loss_NSD[-1]}')
+    results['melmo (p = 2/3, q = 1/4)'] = {
         'loss': loss_NSD,
         'penalty': penalty_NSD,
         'dist_W_prox': dist_W_prox_NSD,
@@ -72,8 +73,8 @@ def run_experiment(
     loss_NSD2, penalty_NSD2, dist_W_prox_NSD2, WHs_NSD2 = run_melmo(
         D, g, rank, prox, max_iter = K, p = 7/12, q = 1/3, lmo = lmo,
     )
-    print(f'Gamons (p = 7/12. q = 1/3) loss: {loss_NSD2[-1]}')
-    results['gamons (p = 7/12, q = 1/3)'] = {
+    print(f'melmo (p = 7/12. q = 1/3) loss: {loss_NSD2[-1]}')
+    results['melmo (p = 7/12, q = 1/3)'] = {
         'loss': loss_NSD2,
         'penalty': penalty_NSD2,
         'dist_W_prox': dist_W_prox_NSD2,
@@ -85,8 +86,8 @@ def run_experiment(
     loss_NSD4, penalty_NSD4, dist_W_prox_NSD4, WHs_NSD4 = run_melmo(
         D, g, rank, prox, max_iter = K, p = 2/3, q = 1/3, lmo = lmo, fixed_steps = False,
         )
-    print(f'Gamons (p = 2/3. q = 1/3) loss: {loss_NSD4[-1]}')
-    results['gamons (p = 2/3, q = 1/3)'] = {
+    print(f'melmo (p = 2/3. q = 1/3) loss: {loss_NSD4[-1]}')
+    results['melmo (p = 2/3, q = 1/3)'] = {
         'loss': loss_NSD4,
         'penalty': penalty_NSD4,
         'dist_W_prox': dist_W_prox_NSD4,
@@ -104,7 +105,7 @@ def run_experiment(
     }
     # loss_cvxNSD, dist_W_prox_cvxNSD, WHs_cvxNSD = run_cvxMoreauNSD(D, rank, prox, max_iter = K)
 
-    # plt.scatter(np.arange(len(loss))[::50], loss[::50]/norm_D, label = 'GAMONS', marker="v")
+    # plt.scatter(np.arange(len(loss))[::50], loss[::50]/norm_D, label = 'melmo', marker="v")
 
     # loss = run_MoreauNSD(D, 10, lmo = lmo_fro)
     # plt.loglog(loss/norm_D, label = 'l2 lmo')
@@ -173,28 +174,28 @@ def plot_images(results: dict):
     plt.title('VS')
     plt.show()
     
-    W, H = results['gamons (p = 2/3, q = 1/4)']['WH']
+    W, H = results['melmo (p = 2/3, q = 1/4)']['WH']
     img = plt.imshow(norm_D*W@H)
     img.set_cmap('gray')
     plt.axis('off')
-    plt.title('Gamons (p = 2/3, q = 1/4)')
+    plt.title('melmo (p = 2/3, q = 1/4)')
     plt.show()
 
-    W, H = results['gamons (p = 2/3, q = 1/3)']['WH']
+    W, H = results['melmo (p = 2/3, q = 1/3)']['WH']
     img = plt.imshow(norm_D*W@H)
     img.set_cmap('gray')
     plt.axis('off')
-    plt.title('Gamons (p = 2/3, q = 1/3)')
+    plt.title('melmo (p = 2/3, q = 1/3)')
     plt.show()
     
     # W, H = WHs_cvxNSD[-1]
     # ax[3].imshow(norm_D*W@H)
     # ax[3].set_title('Ours (CVX MNSD)')
-    W, H = results['gamons (p = 7/12, q = 1/3)']['WH']
+    W, H = results['melmo (p = 7/12, q = 1/3)']['WH']
     img = plt.imshow(norm_D*W@H)
     img.set_cmap('gray')
     plt.axis('off')
-    plt.title('Gamons (p = 7/12, q = 1/3)')
+    plt.title('melmo (p = 7/12, q = 1/3)')
     plt.show()
 
     W, H = results['subgradient']['WH']
@@ -216,18 +217,18 @@ def plot_loss(results: dict, save = False):
     plt.scatter(x, results['variable smoothing']['loss'][x]/norm_D, label = 'Variable Smoothing BW', marker="o")
     print(f"VS : {results['variable smoothing']['loss'][-1]/norm_D:.3e}")
     
-    plt.loglog(results['gamons (p = 2/3, q = 1/4)']['loss']/norm_D)
-    plt.scatter(x, results['gamons (p = 2/3, q = 1/4)']['loss'][x]/norm_D, label = 'GAMONS (p = 2/3. q = 1/4)', marker="v")
-    print(f"GAMONS (p = 2/3. q = 1/4) : {results['gamons (p = 2/3, q = 1/4)']['loss'][-1]/norm_D:.3e}")
+    plt.loglog(results['melmo (p = 2/3, q = 1/4)']['loss']/norm_D)
+    plt.scatter(x, results['melmo (p = 2/3, q = 1/4)']['loss'][x]/norm_D, label = 'melmo (p = 2/3. q = 1/4)', marker="v")
+    print(f"melmo (p = 2/3. q = 1/4) : {results['melmo (p = 2/3, q = 1/4)']['loss'][-1]/norm_D:.3e}")
     
-    plt.loglog(results['gamons (p = 2/3, q = 1/3)']['loss']/norm_D)
-    plt.scatter(x, results['gamons (p = 2/3, q = 1/3)']['loss'][x]/norm_D, label = 'GAMONS (p = 2/3. q = 1/3)', marker="^")
-    print(f"GAMONS (p = 2/3. q = 1/3) : {results['gamons (p = 2/3, q = 1/3)']['loss'][-1]/norm_D:.3e}")
+    plt.loglog(results['melmo (p = 2/3, q = 1/3)']['loss']/norm_D)
+    plt.scatter(x, results['melmo (p = 2/3, q = 1/3)']['loss'][x]/norm_D, label = 'melmo (p = 2/3. q = 1/3)', marker="^")
+    print(f"melmo (p = 2/3. q = 1/3) : {results['melmo (p = 2/3, q = 1/3)']['loss'][-1]/norm_D:.3e}")
     
     
-    plt.loglog(results['gamons (p = 7/12, q = 1/3)']['loss']/norm_D)
-    plt.scatter(x, results['gamons (p = 7/12, q = 1/3)']['loss'][x]/norm_D, label = 'GAMONS (p = 7/12. q = 1/3)', marker="s")
-    print(f"GAMONS (p = 7/12. q = 1/3) : {results['gamons (p = 7/12, q = 1/3)']['loss'][-1]/norm_D:.3e}")
+    plt.loglog(results['melmo (p = 7/12, q = 1/3)']['loss']/norm_D)
+    plt.scatter(x, results['melmo (p = 7/12, q = 1/3)']['loss'][x]/norm_D, label = 'melmo (p = 7/12. q = 1/3)', marker="s")
+    print(f"melmo (p = 7/12. q = 1/3) : {results['melmo (p = 7/12, q = 1/3)']['loss'][-1]/norm_D:.3e}")
     
     
 
@@ -239,8 +240,8 @@ def plot_loss(results: dict, save = False):
         text = f"""
         & ${results['subgradient']['loss'][-1]/norm_D:.3e}\\times10^{2}$
         & ${results['variable smoothing']['loss'][-1]/norm_D:.3e}\\times10^{2}$
-        & ${results['gamons (p = 7/12, q = 1/3)']['loss'][-1]/norm_D:.3e}\\times10^{2}$
-        & ${results['gamons (p = 2/3, q = 1/4)']['loss'][-1]/norm_D:.3e}\\times10^{2}$
+        & ${results['melmo (p = 7/12, q = 1/3)']['loss'][-1]/norm_D:.3e}\\times10^{2}$
+        & ${results['melmo (p = 2/3, q = 1/4)']['loss'][-1]/norm_D:.3e}\\times10^{2}$
         """
         os.makedirs(f"results/{results['dataset_name']}", exist_ok=True)
         with open(f"results/{results['dataset_name']}/rLoss_rank_{results['rank']}.txt", 'w') as f:
@@ -266,17 +267,17 @@ def plot_smoothing_loss(results: dict):
     plt.scatter(x, results['variable smoothing']['dist_W_prox'][x]/norm_D, label = 'Variable Smoothing BW', marker="o")
     print(f"VS : {results['variable smoothing']['dist_W_prox'][-1]/norm_D:.3e}")
     
-    plt.loglog(results['gamons (p = 2/3, q = 1/4)']['dist_W_prox']/norm_D)
-    plt.scatter(x, results['gamons (p = 2/3, q = 1/4)']['dist_W_prox'][x]/norm_D, label = 'GAMONS (p = 2/3. q = 1/4)', marker="v")
-    print(f"GAMONS (p = 2/3. q = 1/4) : {results['gamons (p = 2/3, q = 1/4)']['dist_W_prox'][-1]/norm_D:.3e}")
+    plt.loglog(results['melmo (p = 2/3, q = 1/4)']['dist_W_prox']/norm_D)
+    plt.scatter(x, results['melmo (p = 2/3, q = 1/4)']['dist_W_prox'][x]/norm_D, label = 'melmo (p = 2/3. q = 1/4)', marker="v")
+    print(f"melmo (p = 2/3. q = 1/4) : {results['melmo (p = 2/3, q = 1/4)']['dist_W_prox'][-1]/norm_D:.3e}")
     
-    plt.loglog(results['gamons (p = 2/3, q = 1/3)']['dist_W_prox']/norm_D)
-    plt.scatter(x, results['gamons (p = 2/3, q = 1/3)']['dist_W_prox'][x]/norm_D, label = 'GAMONS (p = 2/3. q = 1/3)', marker="^")
-    print(f"GAMONS (p = 2/3. q = 1/3) : {results['gamons (p = 2/3, q = 1/3)']['dist_W_prox'][-1]/norm_D:.3e}")
+    plt.loglog(results['melmo (p = 2/3, q = 1/3)']['dist_W_prox']/norm_D)
+    plt.scatter(x, results['melmo (p = 2/3, q = 1/3)']['dist_W_prox'][x]/norm_D, label = 'melmo (p = 2/3. q = 1/3)', marker="^")
+    print(f"melmo (p = 2/3. q = 1/3) : {results['melmo (p = 2/3, q = 1/3)']['dist_W_prox'][-1]/norm_D:.3e}")
     
-    plt.loglog(results['gamons (p = 7/12, q = 1/3)']['dist_W_prox']/norm_D)
-    plt.scatter(x, results['gamons (p = 7/12, q = 1/3)']['dist_W_prox'][x]/norm_D, label = 'GAMONS (p = 7/12. q = 1/3)', marker="s")
-    print(f"GAMONS (p = 7/12. q = 1/3) : {results['gamons (p = 7/12, q = 1/3)']['dist_W_prox'][-1]/norm_D:.3e}")
+    plt.loglog(results['melmo (p = 7/12, q = 1/3)']['dist_W_prox']/norm_D)
+    plt.scatter(x, results['melmo (p = 7/12, q = 1/3)']['dist_W_prox'][x]/norm_D, label = 'melmo (p = 7/12. q = 1/3)', marker="s")
+    print(f"melmo (p = 7/12. q = 1/3) : {results['melmo (p = 7/12, q = 1/3)']['dist_W_prox'][-1]/norm_D:.3e}")
     
     plt.ylabel(r'$\|W - prox_{\beta_k}(W)\|$')
     plt.xlabel('Iterations')
@@ -304,23 +305,23 @@ def plot_primal_gap_and_penalty(
     plt.scatter(x, ls_VS[x], label = 'Variable Smoothing BW', marker="o")
     print(f"VS : {ls_VS[-1]:.3e}")
     
-    g_NSD = results['gamons (p = 2/3, q = 1/4)']['penalty']
-    ls_NSD = results['gamons (p = 2/3, q = 1/4)']['loss'] + g_NSD
+    g_NSD = results['melmo (p = 2/3, q = 1/4)']['penalty']
+    ls_NSD = results['melmo (p = 2/3, q = 1/4)']['loss'] + g_NSD
     plt.loglog(ls_NSD)  
-    plt.scatter(x, ls_NSD[x], label = 'GAMONS (p = 2/3. q = 1/4)', marker="v")
-    print(f"GAMONS (p = 2/3. q = 1/4) : {ls_NSD[-1]:.3e}")
+    plt.scatter(x, ls_NSD[x], label = 'melmo (p = 2/3. q = 1/4)', marker="v")
+    print(f"melmo (p = 2/3. q = 1/4) : {ls_NSD[-1]:.3e}")
     
-    g_NSD3 = results['gamons (p = 2/3, q = 1/3)']['penalty']
-    ls_NSD3 = results['gamons (p = 2/3, q = 1/3)']['loss'] + g_NSD3
+    g_NSD3 = results['melmo (p = 2/3, q = 1/3)']['penalty']
+    ls_NSD3 = results['melmo (p = 2/3, q = 1/3)']['loss'] + g_NSD3
     plt.loglog(ls_NSD3)  
-    plt.scatter(x, ls_NSD3[x], label = 'GAMONS (p = 2/3. q = 1/3)', marker="^")
-    print(f"GAMONS (p = 2/3. q = 1/3) : {ls_NSD3[-1]:.3e}")
+    plt.scatter(x, ls_NSD3[x], label = 'melmo (p = 2/3. q = 1/3)', marker="^")
+    print(f"melmo (p = 2/3. q = 1/3) : {ls_NSD3[-1]:.3e}")
     
-    g_NSD2 = results['gamons (p = 7/12, q = 1/3)']['penalty']
-    ls_NSD2 = results['gamons (p = 7/12, q = 1/3)']['loss'] + g_NSD2
+    g_NSD2 = results['melmo (p = 7/12, q = 1/3)']['penalty']
+    ls_NSD2 = results['melmo (p = 7/12, q = 1/3)']['loss'] + g_NSD2
     plt.loglog(ls_NSD2)  
-    plt.scatter(x, ls_NSD2[x], label = 'GAMONS (p = 7/12. q = 1/3)', marker="s")
-    print(f"GAMONS (p = 7/12. q = 1/3) : {ls_NSD2[-1]:.3e}")
+    plt.scatter(x, ls_NSD2[x], label = 'melmo (p = 7/12. q = 1/3)', marker="s")
+    print(f"melmo (p = 7/12. q = 1/3) : {ls_NSD2[-1]:.3e}")
     
     
     
@@ -358,16 +359,16 @@ def plot_primal_gap_and_penalty(
     print(f"VS : {g_VS[-1]:.3e}")
     
     plt.loglog(g_NSD)
-    plt.scatter(x, g_NSD[x], label = 'GAMONS (p = 2/3. q = 1/4)', marker="v")
-    print(f"GAMONS (p = 2/3. q = 1/4) : {g_NSD[-1]:.3e}")
+    plt.scatter(x, g_NSD[x], label = 'melmo (p = 2/3. q = 1/4)', marker="v")
+    print(f"melmo (p = 2/3. q = 1/4) : {g_NSD[-1]:.3e}")
     
     plt.loglog(g_NSD3)
-    plt.scatter(x, g_NSD3[x], label = 'GAMONS (p = 2/3. q = 1/3)', marker="^")
-    print(f"GAMONS (p = 2/3. q = 1/3) : {g_NSD3[-1]:.3e}")
+    plt.scatter(x, g_NSD3[x], label = 'melmo (p = 2/3. q = 1/3)', marker="^")
+    print(f"melmo (p = 2/3. q = 1/3) : {g_NSD3[-1]:.3e}")
     
     plt.loglog(g_NSD2)
-    plt.scatter(x, g_NSD2[x], label = 'GAMONS (p = 7/12. q = 1/3)', marker="s")
-    print(f"GAMONS (p = 7/12. q = 1/3) : {g_NSD2[-1]:.3e}")
+    plt.scatter(x, g_NSD2[x], label = 'melmo (p = 7/12. q = 1/3)', marker="s")
+    print(f"melmo (p = 7/12. q = 1/3) : {g_NSD2[-1]:.3e}")
     
     plt.loglog(g_sub)
     plt.scatter(x, g_sub[x], label = 'Subgradient', marker="*")
@@ -396,15 +397,15 @@ def plot_images_ranks(results: dict):
         W, H = results[rank]['variable smoothing']['WH']
         ax[1].imshow(W@H)
         ax[1].set_title('Variable Smoothing BW')
-        W, H = results[rank]['gamons (p = 2/3, q = 1/4)']['WH']
+        W, H = results[rank]['melmo (p = 2/3, q = 1/4)']['WH']
         ax[2].imshow(W@H)
-        ax[2].set_title('GAMONS (p = 2/3. q = 1/4)')
-        W, H = results[rank]['gamons (p = 2/3, q = 1/3)']['WH']
+        ax[2].set_title('melmo (p = 2/3. q = 1/4)')
+        W, H = results[rank]['melmo (p = 2/3, q = 1/3)']['WH']
         ax[3].imshow(W@H)
-        ax[3].set_title('GAMONS (p = 2/3. q = 1/3)')
-        W, H = results[rank]['gamons (p = 7/12, q = 1/3)']['WH']
+        ax[3].set_title('melmo (p = 2/3. q = 1/3)')
+        W, H = results[rank]['melmo (p = 7/12, q = 1/3)']['WH']
         ax[4].imshow(W@H)
-        ax[4].set_title('GAMONS (p = 7/12. q = 1/3)')
+        ax[4].set_title('melmo (p = 7/12. q = 1/3)')
         W, H = results[rank]['subgradient']['WH']
         ax[5].imshow(W@H)
         ax[5].set_title('Subgradient')  

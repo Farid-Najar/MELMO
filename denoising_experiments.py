@@ -83,8 +83,8 @@ def run_experiment(
         D, g = g, prox = prox, T = T, T_adj = T_adj, max_iter = K, lmo = lambda M : lmo_spectral(M, 1., 6), 
         original = Y,
     )
-    print(f'Gamons (Spectral LMO) loss: {loss_NSD[-1]}')
-    results['gamons (Spectral LMO)'] = {
+    print(f'melmo (Spectral LMO) loss: {loss_NSD[-1]}')
+    results['melmo (Spectral LMO)'] = {
         'loss': loss_NSD,
         'penalty': penalty_NSD,
         'ssims': ssims_NSD,
@@ -95,8 +95,8 @@ def run_experiment(
         D, g = g, prox = prox, T = T, T_adj = T_adj, max_iter = K, lmo = lambda M : lmo_l2(M, 1.), 
         original = Y,
     )
-    print(f'Gamons (L2 LMO) loss: {loss_NSD[-1]}')
-    results['gamons (L2 LMO)'] = {
+    print(f'melmo (L2 LMO) loss: {loss_NSD[-1]}')
+    results['melmo (L2 LMO)'] = {
         'loss': loss_NSD,
         'penalty': penalty_NSD,
         'ssims': ssims_NSD,
@@ -107,18 +107,18 @@ def run_experiment(
         D, g = g, prox = prox, T = T, T_adj = T_adj, max_iter = K, lmo = lambda M : lmo_nuclear(M, 1.), 
         original = Y,
     )
-    print(f'Gamons (Nuclear LMO) loss: {loss_NSD[-1]}')
-    results['gamons (Nuclear LMO)'] = {
+    print(f'melmo (Nuclear LMO) loss: {loss_NSD[-1]}')
+    results['melmo (Nuclear LMO)'] = {
         'loss': loss_NSD,
         'penalty': penalty_NSD,
         'ssims': ssims_NSD,
         'WH': WHs_NSD,
     }
-    # loss_NSD4, penalty_NSD4, ssims_NSD4, WHs_NSD4 = run_gamons2(
+    # loss_NSD4, penalty_NSD4, ssims_NSD4, WHs_NSD4 = run_melmo2(
     #     D, g = g, prox = prox, T = T, T_adj = T_adj, max_iter = K, p = 7/12, q = 1/3, lmo = lmo, original = Y,
     # )
-    # print(f'Gamons (p = 7/12, q = 1/3) loss: {loss_NSD4[-1]}')
-    # results['gamons (p = 7/12, q = 1/3)'] = {
+    # print(f'melmo (p = 7/12, q = 1/3) loss: {loss_NSD4[-1]}')
+    # results['melmo (p = 7/12, q = 1/3)'] = {
     #     'loss': loss_NSD4,
     #     'penalty': penalty_NSD4,
     #     'ssims': ssims_NSD4,
@@ -189,43 +189,43 @@ def plot_images(results: dict):
     plt.title('VS')
     plt.show()
         
-    W = results['gamons (Spectral LMO)']['WH']
+    W = results['melmo (Spectral LMO)']['WH']
     img = plt.imshow(W)
     img.set_cmap('gray')
     plt.axis('off')
-    plt.title('Gamons (Spectral LMO)')
+    plt.title('melmo (Spectral LMO)')
     plt.show()
     
-    W = results['gamons (L2 LMO)']['WH']
+    W = results['melmo (L2 LMO)']['WH']
     img = plt.imshow(W)
     img.set_cmap('gray')
     plt.axis('off')
-    plt.title('Gamons (L2 LMO)')
+    plt.title('melmo (L2 LMO)')
     plt.show()
     
-    W = results['gamons (Nuclear LMO)']['WH']
+    W = results['melmo (Nuclear LMO)']['WH']
     img = plt.imshow(W)
     img.set_cmap('gray')
     plt.axis('off')
-    plt.title('Gamons (Nuclear LMO)')
+    plt.title('melmo (Nuclear LMO)')
     plt.show()
     
-    # W = results['gamons (p = 7/12, q = 1/3)']['WH']
+    # W = results['melmo (p = 7/12, q = 1/3)']['WH']
     # img = plt.imshow(W)
     # img.set_cmap('gray')
     # plt.axis('off')
-    # plt.title('Gamons (p = 7/12, q = 1/3)')
+    # plt.title('melmo (p = 7/12, q = 1/3)')
     # plt.show()
 
     
     # W, H = WHs_cvxNSD[-1]
     # ax[3].imshow(norm_D*W)
     # ax[3].set_title('Ours (CVX MNSD)')
-    # W = results['gamons (p = 7/12, q = 1/3)']['WH']
+    # W = results['melmo (p = 7/12, q = 1/3)']['WH']
     # img = plt.imshow(W)
     # img.set_cmap('gray')
     # plt.axis('off')
-    # plt.title('Gamons (p = 7/12, q = 1/3)')
+    # plt.title('melmo (p = 7/12, q = 1/3)')
     # plt.show()
 
     W = results['subgradient']['WH']
@@ -247,34 +247,34 @@ def plot_loss(results: dict):
     plt.scatter(x, results['variable smoothing']['loss'][x]/norm_D, label = 'Variable Smoothing BW', marker="o")
     print(f"VS : {results['variable smoothing']['loss'][-1]/norm_D:.3e}")
     
-    plt.loglog(results['gamons (Spectral LMO)']['loss']/norm_D)
-    plt.scatter(x, results['gamons (Spectral LMO)']['loss'][x]/norm_D, label = 'GAMONS (Spectral LMO)', marker="v")
-    print(f"GAMONS (Spectral LMO) : {results['gamons (Spectral LMO)']['loss'][-1]/norm_D:.3e}")
+    plt.loglog(results['melmo (Spectral LMO)']['loss']/norm_D)
+    plt.scatter(x, results['melmo (Spectral LMO)']['loss'][x]/norm_D, label = 'melmo (Spectral LMO)', marker="v")
+    print(f"melmo (Spectral LMO) : {results['melmo (Spectral LMO)']['loss'][-1]/norm_D:.3e}")
     
-    plt.loglog(results['gamons (L2 LMO)']['loss']/norm_D)
-    plt.scatter(x, results['gamons (L2 LMO)']['loss'][x]/norm_D, label = 'GAMONS (L2 LMO)', marker="^")
-    print(f"GAMONS (L2 LMO) : {results['gamons (L2 LMO)']['loss'][-1]/norm_D:.3e}")
+    plt.loglog(results['melmo (L2 LMO)']['loss']/norm_D)
+    plt.scatter(x, results['melmo (L2 LMO)']['loss'][x]/norm_D, label = 'melmo (L2 LMO)', marker="^")
+    print(f"melmo (L2 LMO) : {results['melmo (L2 LMO)']['loss'][-1]/norm_D:.3e}")
     
-    plt.loglog(results['gamons (Nuclear LMO)']['loss']/norm_D)
-    plt.scatter(x, results['gamons (Nuclear LMO)']['loss'][x]/norm_D, label = 'GAMONS (Nuclear LMO)', marker="s")
-    print(f"GAMONS (Nuclear LMO) : {results['gamons (Nuclear LMO)']['loss'][-1]/norm_D:.3e}")
+    plt.loglog(results['melmo (Nuclear LMO)']['loss']/norm_D)
+    plt.scatter(x, results['melmo (Nuclear LMO)']['loss'][x]/norm_D, label = 'melmo (Nuclear LMO)', marker="s")
+    print(f"melmo (Nuclear LMO) : {results['melmo (Nuclear LMO)']['loss'][-1]/norm_D:.3e}")
     
-    # plt.loglog(results['gamons (p = 2/3, q = 1/3)']['loss']/norm_D)
-    # plt.scatter(x, results['gamons (p = 2/3, q = 1/3)']['loss'][x]/norm_D, label = 'GAMONS (p = 2/3. q = 1/3)', marker="^")
-    # print(f"GAMONS (p = 2/3. q = 1/3) : {results['gamons (p = 2/3, q = 1/3)']['loss'][-1]/norm_D:.3e}")
+    # plt.loglog(results['melmo (p = 2/3, q = 1/3)']['loss']/norm_D)
+    # plt.scatter(x, results['melmo (p = 2/3, q = 1/3)']['loss'][x]/norm_D, label = 'melmo (p = 2/3. q = 1/3)', marker="^")
+    # print(f"melmo (p = 2/3. q = 1/3) : {results['melmo (p = 2/3, q = 1/3)']['loss'][-1]/norm_D:.3e}")
 
     plt.loglog(results['subgradient']['loss']/norm_D)
     plt.scatter(x, results['subgradient']['loss'][x]/norm_D, label = 'Subgradient', marker="*")
     print(f"Subgradient : {results['subgradient']['loss'][-1]/norm_D:.3e}")
 
-    text = f"""
-    & ${results['subgradient']['loss'][-1]/norm_D:.3e}\\times10^{2}$
-    & ${results['variable smoothing']['loss'][-1]/norm_D:.3e}\\times10^{2}$
-    & ${results['gamons (p = 2/3, q = 1/3)']['loss'][-1]/norm_D:.3e}\\times10^{2}$
-    """
-    os.makedirs(f"denoising_results/{results['dataset_name']}", exist_ok=True)
-    with open(f"denoising_results/{results['dataset_name']}/rLoss.txt", 'w') as f:
-        f.write(text)
+    # text = f"""
+    # & ${results['subgradient']['loss'][-1]/norm_D:.3e}\\times10^{2}$
+    # & ${results['variable smoothing']['loss'][-1]/norm_D:.3e}\\times10^{2}$
+    # & ${results['melmo (p = 2/3, q = 1/3)']['loss'][-1]/norm_D:.3e}\\times10^{2}$
+    # """
+    # os.makedirs(f"denoising_results/{results['dataset_name']}", exist_ok=True)
+    # with open(f"denoising_results/{results['dataset_name']}/rLoss.txt", 'w') as f:
+    #     f.write(text)
     
     plt.ylabel(r'$\frac{\|Y - WH\|_F^2}{\|Y\|_F^2}$')
     plt.xlabel('Iterations')
@@ -296,20 +296,20 @@ def plot_ssims(results: dict):
     plt.scatter(x, results['variable smoothing']['ssims'][x], label = 'Variable Smoothing BW', marker="o")
     print(f"VS : {results['variable smoothing']['ssims'][-1]:.3e}")
     
-    plt.loglog(results['gamons (Spectral LMO)']['ssims'])
-    plt.scatter(x, results['gamons (Spectral LMO)']['ssims'][x], label = 'GAMONS (Spectral LMO)', marker="v")
-    print(f"GAMONS (Spectral LMO) : {results['gamons (Spectral LMO)']['ssims'][-1]:.3e}")
+    plt.loglog(results['melmo (Spectral LMO)']['ssims'])
+    plt.scatter(x, results['melmo (Spectral LMO)']['ssims'][x], label = 'melmo (Spectral LMO)', marker="v")
+    print(f"melmo (Spectral LMO) : {results['melmo (Spectral LMO)']['ssims'][-1]:.3e}")
     
-    plt.loglog(results['gamons (L2 LMO)']['ssims'])
-    plt.scatter(x, results['gamons (L2 LMO)']['ssims'][x], label = 'GAMONS (L2 LMO)', marker="^")
-    print(f"GAMONS (L2 LMO) : {results['gamons (L2 LMO)']['ssims'][-1]:.3e}")
+    plt.loglog(results['melmo (L2 LMO)']['ssims'])
+    plt.scatter(x, results['melmo (L2 LMO)']['ssims'][x], label = 'melmo (L2 LMO)', marker="^")
+    print(f"melmo (L2 LMO) : {results['melmo (L2 LMO)']['ssims'][-1]:.3e}")
     
-    # plt.loglog(results['gamons (p = 7/12, q = 1/3)']['ssims'])
-    # plt.scatter(x, results['gamons (p = 7/12, q = 1/3)']['ssims'][x], label = 'GAMONS (p = 7/12, q = 1/3)', marker="s")
-    # print(f"GAMONS (p = 7/12, q = 1/3) : {results['gamons (p = 7/12, q = 1/3)']['ssims'][-1]:.3e}")
-    plt.loglog(results['gamons (Nuclear LMO)']['ssims'])
-    plt.scatter(x, results['gamons (Nuclear LMO)']['ssims'][x], label = 'GAMONS (Nuclear LMO)', marker="s")
-    print(f"GAMONS (Nuclear LMO) : {results['gamons (Nuclear LMO)']['ssims'][-1]:.3e}")
+    # plt.loglog(results['melmo (p = 7/12, q = 1/3)']['ssims'])
+    # plt.scatter(x, results['melmo (p = 7/12, q = 1/3)']['ssims'][x], label = 'melmo (p = 7/12, q = 1/3)', marker="s")
+    # print(f"melmo (p = 7/12, q = 1/3) : {results['melmo (p = 7/12, q = 1/3)']['ssims'][-1]:.3e}")
+    plt.loglog(results['melmo (Nuclear LMO)']['ssims'])
+    plt.scatter(x, results['melmo (Nuclear LMO)']['ssims'][x], label = 'melmo (Nuclear LMO)', marker="s")
+    print(f"melmo (Nuclear LMO) : {results['melmo (Nuclear LMO)']['ssims'][-1]:.3e}")
     
     
     plt.loglog(results['subgradient']['ssims'])
@@ -342,23 +342,23 @@ def plot_primal_gap_and_penalty(
     plt.scatter(x, ls_VS[x], label = 'Variable Smoothing BW', marker="o")
     print(f"VS : {ls_VS[-1]:.3e}")
     
-    g_NSD = results['gamons (Spectral LMO)']['penalty']
-    ls_NSD = results['gamons (Spectral LMO)']['loss'] + g_NSD
+    g_NSD = results['melmo (Spectral LMO)']['penalty']
+    ls_NSD = results['melmo (Spectral LMO)']['loss'] + g_NSD
     plt.loglog(ls_NSD)  
-    plt.scatter(x, ls_NSD[x], label = 'GAMONS (Spectral LMO)', marker="v")
-    print(f"GAMONS (Spectral LMO) : {ls_NSD[-1]:.3e}")
+    plt.scatter(x, ls_NSD[x], label = 'melmo (Spectral LMO)', marker="v")
+    print(f"melmo (Spectral LMO) : {ls_NSD[-1]:.3e}")
     
-    g_NSD = results['gamons (L2 LMO)']['penalty']
-    ls_NSD = results['gamons (L2 LMO)']['loss'] + g_NSD
+    g_NSD = results['melmo (L2 LMO)']['penalty']
+    ls_NSD = results['melmo (L2 LMO)']['loss'] + g_NSD
     plt.loglog(ls_NSD)  
-    plt.scatter(x, ls_NSD[x], label = 'GAMONS (L2 LMO)', marker="^")
-    print(f"GAMONS (L2 LMO) : {ls_NSD[-1]:.3e}")
+    plt.scatter(x, ls_NSD[x], label = 'melmo (L2 LMO)', marker="^")
+    print(f"melmo (L2 LMO) : {ls_NSD[-1]:.3e}")
     
-    g_NSD = results['gamons (Nuclear LMO)']['penalty']
-    ls_NSD = results['gamons (Nuclear LMO)']['loss'] + g_NSD
+    g_NSD = results['melmo (Nuclear LMO)']['penalty']
+    ls_NSD = results['melmo (Nuclear LMO)']['loss'] + g_NSD
     plt.loglog(ls_NSD)  
-    plt.scatter(x, ls_NSD[x], label = 'GAMONS (Nuclear LMO)', marker="s")
-    print(f"GAMONS (Nuclear LMO) : {ls_NSD[-1]:.3e}")
+    plt.scatter(x, ls_NSD[x], label = 'melmo (Nuclear LMO)', marker="s")
+    print(f"melmo (Nuclear LMO) : {ls_NSD[-1]:.3e}")
     
     g_sub = results['subgradient']['penalty']
     ls_sub = results['subgradient']['loss'] + g_sub
@@ -390,12 +390,12 @@ def plot_primal_gap_and_penalty(
     print(f"VS : {g_VS[-1]:.3e}")
     
     plt.loglog(g_NSD)
-    plt.scatter(x, g_NSD[x], label = 'GAMONS (p = 2/3, q = 1/3)', marker="v")
-    print(f"GAMONS (p = 2/3, q = 1/3) : {g_NSD[-1]:.3e}")
+    plt.scatter(x, g_NSD[x], label = 'melmo (p = 2/3, q = 1/3)', marker="v")
+    print(f"melmo (p = 2/3, q = 1/3) : {g_NSD[-1]:.3e}")
     
     # plt.loglog(g_NSD2)
-    # plt.scatter(x, g_NSD2[x], label = 'GAMONS (p = 7/12, q = 1/3)', marker="s")
-    # print(f"GAMONS (p = 7/12, q = 1/3) : {g_NSD2[-1]:.3e}")
+    # plt.scatter(x, g_NSD2[x], label = 'melmo (p = 7/12, q = 1/3)', marker="s")
+    # print(f"melmo (p = 7/12, q = 1/3) : {g_NSD2[-1]:.3e}")
     
     plt.loglog(g_sub)
     plt.scatter(x, g_sub[x], label = 'Subgradient', marker="*")
@@ -424,12 +424,12 @@ def plot_primal_gap_and_penalty(
 #         W, H = results[rank]['variable smoothing']['WH']
 #         ax[1].imshow(W)
 #         ax[1].set_title('Variable Smoothing BW')
-#         W, H = results[rank]['gamons (p = 2/3, q = 1/3)']['WH']
+#         W, H = results[rank]['melmo (p = 2/3, q = 1/3)']['WH']
 #         ax[2].imshow(W)
-#         ax[2].set_title('GAMONS (p = 2/3, q = 1/3)')
-#         W, H = results[rank]['gamons (p = 7/12, q = 1/3)']['WH']
+#         ax[2].set_title('melmo (p = 2/3, q = 1/3)')
+#         W, H = results[rank]['melmo (p = 7/12, q = 1/3)']['WH']
 #         ax[3].imshow(W)
-#         ax[3].set_title('GAMONS (p = 7/12, q = 1/3)')
+#         ax[3].set_title('melmo (p = 7/12, q = 1/3)')
 #         W, H = results[rank]['subgradient']['WH']
 #         ax[4].imshow(W)
 #         ax[4].set_title('Subgradient')

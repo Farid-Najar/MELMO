@@ -7,8 +7,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import torch
+from torch import Tensor
 
 from tqdm import tqdm
+from typing import Callable
 
 def generateWH(m = 100, n = 100, r = 10):
     W = np.random.rand(m, r)
@@ -65,7 +67,7 @@ def run_melmo_c(
 
 def run_melmo(
     Y : np.ndarray,
-    g  : callable,
+    g  : Callable,
     r : int,
     prox = prox_mcp,
     lmo = lambda M : lmo_spectral(M, 1., 6),
@@ -113,15 +115,15 @@ def run_melmo(
 
 def run_melmo2(
     Y : np.ndarray,
-    g  : callable,
-    T : callable = lambda x : x,
-    T_adj : callable = lambda x : x,
+    g  : Callable,
+    T : Callable = lambda x : x,
+    T_adj : Callable = lambda x : x,
     prox = spectral_prox_l1,
     lmo = lambda M : lmo_nuclear(M, 1.),
     gamma = 2.,
     beta = 1., # 1.5 is the beta for the MCP as it is 1/mu weakly convex
-    p = 2/3,
-    q = 1/3,
+    p = 7/12,
+    q = 1.,
     e = 1e-3,
     max_iter = 1_000,
     fixed_steps = False,
@@ -140,34 +142,41 @@ def run_melmo2(
     loss = np.zeros(max_iter)
     penalty = np.zeros(max_iter)
     ssims = np.zeros(max_iter)
+    dist_W_prox = np.zeros(max_iter)
     
     if original is None:
         original = Y
     for t in tqdm(range(max_iter)):
         D = (Y - W)
         loss[t] = np.linalg.norm(D, 'fro')**2
-        penalty[t] = g(T(W))
-        g_W = -2*D + T_adj(grad_g(T(W), beta_t))
+        TW = T(W)
+        penalty[t] = g(TW)
+        g_W = -2*D + T_adj(grad_g(TW, beta_t))
         W = update(g_W, lmo, W, gamma_t)
         
         # if t % store_WH_every == 0:
         #     WHs.append((W, H))
         
         ssims[t] = ssim(original, W, full=True, data_range=1)[0]
+        concatenate_W = np.concatenate((TW[0], TW[1]))
+        dist_W_prox[t] = np.linalg.norm(concatenate_W - prox(concatenate_W, beta_t), 'fro')
+        
+        # dist_W_prox[t] = np.linalg.norm(TW[0] - prox(TW[0], beta_t), 'fro')
+        # dist_W_prox[t] += np.linalg.norm(TW[1] - prox(TW[1], beta_t), 'fro')
         
         beta_t = beta / (t+1)**q if not fixed_steps else beta_t
         gamma_t = gamma / (t+1)**p if not fixed_steps else gamma_t
         
     # plt.semilogy(loss)
     # plt.show()
-    return loss, penalty, ssims, W
+    return loss, penalty, ssims, dist_W_prox, W
 
 
 def run_melmo2_epoch(
     Y : np.ndarray,
-    g  : callable,
-    T : callable = lambda x : x,
-    T_adj : callable = lambda x : x,
+    g  : Callable,
+    T : Callable = lambda x : x,
+    T_adj : Callable = lambda x : x,
     prox = spectral_prox_l1,
     lmo = lambda M : lmo_nuclear(M, 1.),
     gamma = 2.,
@@ -193,18 +202,21 @@ def run_melmo2_epoch(
     loss = np.zeros(max_iter)
     penalty = np.zeros(max_iter)
     ssims = np.zeros(max_iter)
+    dist_W_prox = np.zeros(max_iter)
     
     if original is None:
         original = Y
     for l in tqdm(range(max_K)):
-        beta_t = beta / 2**(l+1)**q
-        gamma_t = gamma / 2**(l+1)**p
+        beta_t = beta / 2**(l*q)
+        gamma_t = gamma / 2**(l*p)
         for t in range(2**l, 2**(l+1)):
             D = (Y - W)
             loss[t] = np.linalg.norm(D, 'fro')**2
             penalty[t] = g(T(W))
             g_W = -2*D + T_adj(grad_g(T(W), beta_t))
             W = update(g_W, lmo, W, gamma_t)
+            
+            dist_W_prox[t] = np.linalg.norm(W - prox(W, beta_t), 'fro')
             
             # if t % store_WH_every == 0:
             #     WHs.append((W, H))
@@ -215,12 +227,12 @@ def run_melmo2_epoch(
         
     # plt.semilogy(loss)
     # plt.show()
-    return loss, penalty, ssims, W
+    return loss, penalty, ssims, dist_W_prox, W
 
 
 def run_VS(
     Y,
-    g  : callable,
+    g  : Callable,
     r : int,
     prox = prox_mcp,
     L_gradf = 2.,
@@ -272,9 +284,9 @@ def run_VS(
 
 def run_VS2(
     Y,
-    g  : callable,
-    T : callable = lambda x : x,
-    T_adj : callable = lambda x : x,
+    g  : Callable,
+    T : Callable = lambda x : x,
+    T_adj : Callable = lambda x : x,
     prox = spectral_prox_l1,
     L_gradf = 2.,
     beta = 1., # 1.5 is the beta for the MCP as it is 1/mu weakly convex
@@ -340,23 +352,23 @@ def run_subgradient_descent(
     
     Parameters:
     -----------
-    f : callable
+    f : Callable
         Objective function F(W, H) that accepts two PyTorch tensors and returns a scalar tensor
     shapes : tuple of tuples
         (shape_W, shape_H) where shape_W = (n_rows_W, n_cols_W), shape_H = (n_rows_H, n_cols_H)
-    init : str or callable, optional
+    init : str or Callable, optional
         Initialization method for W and H:
         - 'random': Normal distribution (mean=0, std=0.1)
         - 'uniform': Uniform distribution [0, 1)
         - 'zeros': Zero matrices
-        - callable: Custom init function taking (shape_W, shape_H) and returning (W0, H0)
-    step_size_rule : callable or float, optional
+        - Callable: Custom init function taking (shape_W, shape_H) and returning (W0, H0)
+    step_size_rule : Callable or float, optional
         Step size rule (constant or function of iteration index k)
     max_iter : int, optional
         Maximum number of iterations
     tol : float, optional
         Tolerance for stopping based on subgradient norm
-    callback : callable, optional
+    callback : Callable, optional
         Function called after each iteration with signature:
         callback(iteration, W, H, f_val, grad_norm)
     device : str or torch.device, optional
@@ -387,7 +399,7 @@ def run_subgradient_descent(
     
     # Initialize matrices
     shape_W, shape_H = shapes
-    if callable(init):
+    if isinstance(init, Callable):
         W, H = init(shape_W, shape_H)
     elif init == 'random':
         W = 0.1 * torch.randn(*shape_W, device=device, dtype=dtype)
@@ -402,8 +414,8 @@ def run_subgradient_descent(
         raise ValueError(f"Unsupported initialization method: {init}")
     
     # Enable gradient tracking
-    W = W.detach().requires_grad_(True)
-    H = H.detach().requires_grad_(True)
+    W: Tensor = W.detach().requires_grad_(True)
+    H: Tensor = H.detach().requires_grad_(True)
     
     # History tracking
     loss = np.zeros(max_iter)
@@ -426,8 +438,8 @@ def run_subgradient_descent(
         f_val.backward()
         
         # Get gradients and compute norm
-        gW = W.grad.clone()
-        gH = H.grad.clone()
+        gW: Tensor = W.grad.clone()
+        gH: Tensor = H.grad.clone()
         grad_norm = torch.norm(torch.cat([gW.flatten(), gH.flatten()])).item()
         
         
@@ -438,7 +450,7 @@ def run_subgradient_descent(
         #     break
         
         # Get step size
-        step = step_size_rule(k) if callable(step_size_rule) else step_size_rule
+        step = step_size_rule(k) if isinstance(step_size_rule, Callable) else step_size_rule
         
         # Update matrices
         with torch.no_grad():
@@ -464,7 +476,7 @@ def run_subgradient_descent2(
     Y,
     g,
     shapes,
-    T : callable = lambda x : x,
+    T : Callable = lambda x : x,
     init='original',
     # step_size_rule=lambda k: 1.0 / (k + 1)**(1/4),
     step_size_rule=1e-3,
@@ -482,23 +494,23 @@ def run_subgradient_descent2(
     
     Parameters:
     -----------
-    f : callable
+    f : Callable
         Objective function F(W, H) that accepts two PyTorch tensors and returns a scalar tensor
     shapes : tuple of tuples
         (shape_W, shape_H) where shape_W = (n_rows_W, n_cols_W), shape_H = (n_rows_H, n_cols_H)
-    init : str or callable, optional
+    init : str or Callable, optional
         Initialization method for W and H:
         - 'random': Normal distribution (mean=0, std=0.1)
         - 'uniform': Uniform distribution [0, 1)
         - 'zeros': Zero matrices
-        - callable: Custom init function taking (shape_W, shape_H) and returning (W0, H0)
-    step_size_rule : callable or float, optional
+        - Callable: Custom init function taking (shape_W, shape_H) and returning (W0, H0)
+    step_size_rule : Callable or float, optional
         Step size rule (constant or function of iteration index k)
     max_iter : int, optional
         Maximum number of iterations
     tol : float, optional
         Tolerance for stopping based on subgradient norm
-    callback : callable, optional
+    callback : Callable, optional
         Function called after each iteration with signature:
         callback(iteration, W, H, f_val, grad_norm)
     device : str or torch.device, optional
@@ -532,7 +544,7 @@ def run_subgradient_descent2(
         original = Y
         
     shape_W = shapes
-    if callable(init):
+    if Callable(init):
         # W, H = init(shape_W, shape_H)
         pass
     elif init == 'random':
@@ -584,7 +596,7 @@ def run_subgradient_descent2(
         
         
         # Get step size
-        step = step_size_rule(k) if callable(step_size_rule) else step_size_rule
+        step = step_size_rule(k) if Callable(step_size_rule) else step_size_rule
         
         # Update matrices
         with torch.no_grad():
