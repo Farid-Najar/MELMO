@@ -34,7 +34,7 @@ This project uses [uv](https://docs.astral.sh/uv) for dependency management.
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/Farid-Najar/MELMO.git
 cd MELMO
 
 # Install dependencies
