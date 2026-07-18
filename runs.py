@@ -121,13 +121,15 @@ def run_melmo2(
     prox = spectral_prox_l1,
     lmo = lambda M : lmo_nuclear(M, 1.),
     gamma = 2.,
-    beta = 1., # 1.5 is the beta for the MCP as it is 1/mu weakly convex
+    beta = 1.5, # 1.5 is the beta for the MCP as it is 1/mu weakly convex
     p = 7/12,
     q = 1.,
     e = 1e-3,
     max_iter = 1_000,
     fixed_steps = False,
     original = None,
+    norm_type = 2, # spectral norm by default
+    dual_norm_type = 'nuc',
     # store_WH_every = 1,
     ):
     
@@ -143,6 +145,7 @@ def run_melmo2(
     penalty = np.zeros(max_iter)
     ssims = np.zeros(max_iter)
     dist_W_prox = np.zeros(max_iter)
+    grad_norms = np.zeros(max_iter)
     
     if original is None:
         original = Y
@@ -153,13 +156,14 @@ def run_melmo2(
         penalty[t] = g(TW)
         g_W = -2*D + T_adj(grad_g(TW, beta_t))
         W = update(g_W, lmo, W, gamma_t)
+        grad_norms[t] = np.linalg.norm(g_W, dual_norm_type)
         
         # if t % store_WH_every == 0:
         #     WHs.append((W, H))
         
         ssims[t] = ssim(original, W, full=True, data_range=1)[0]
         concatenate_W = np.concatenate((TW[0], TW[1]))
-        dist_W_prox[t] = np.linalg.norm(concatenate_W - prox(concatenate_W, beta_t), 'fro')
+        dist_W_prox[t] = np.linalg.norm(concatenate_W - prox(concatenate_W, beta_t), norm_type)
         
         # dist_W_prox[t] = np.linalg.norm(TW[0] - prox(TW[0], beta_t), 'fro')
         # dist_W_prox[t] += np.linalg.norm(TW[1] - prox(TW[1], beta_t), 'fro')
@@ -169,7 +173,7 @@ def run_melmo2(
         
     # plt.semilogy(loss)
     # plt.show()
-    return loss, penalty, ssims, dist_W_prox, W
+    return loss, penalty, ssims, dist_W_prox, W, grad_norms
 
 
 def run_melmo2_epoch(
@@ -180,13 +184,15 @@ def run_melmo2_epoch(
     prox = spectral_prox_l1,
     lmo = lambda M : lmo_nuclear(M, 1.),
     gamma = 2.,
-    beta = 1., # 1.5 is the beta for the MCP as it is 1/mu weakly convex
+    beta = 1.5, # 1.5 is the beta for the MCP as it is 1/mu weakly convex
     p = 2/3,
     q = 1/3,
     e = 1e-3,
     max_K = 10,
     fixed_steps = False,
     original = None,
+    norm_type = 2, # spectral norm by default
+    dual_norm_type = 'nuc',
     # store_WH_every = 1,
     ):
     
@@ -203,6 +209,7 @@ def run_melmo2_epoch(
     penalty = np.zeros(max_iter)
     ssims = np.zeros(max_iter)
     dist_W_prox = np.zeros(max_iter)
+    grad_norms = np.zeros(max_iter)
     
     if original is None:
         original = Y
@@ -215,8 +222,9 @@ def run_melmo2_epoch(
             penalty[t] = g(T(W))
             g_W = -2*D + T_adj(grad_g(T(W), beta_t))
             W = update(g_W, lmo, W, gamma_t)
+            grad_norms[t] = np.linalg.norm(g_W, dual_norm_type)
             
-            dist_W_prox[t] = np.linalg.norm(W - prox(W, beta_t), 'fro')
+            dist_W_prox[t] = np.linalg.norm(W - prox(W, beta_t), norm_type)
             
             # if t % store_WH_every == 0:
             #     WHs.append((W, H))
@@ -227,7 +235,7 @@ def run_melmo2_epoch(
         
     # plt.semilogy(loss)
     # plt.show()
-    return loss, penalty, ssims, dist_W_prox, W
+    return loss, penalty, ssims, dist_W_prox, W, grad_norms
 
 
 def run_VS(

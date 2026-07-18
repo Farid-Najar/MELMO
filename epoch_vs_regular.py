@@ -68,7 +68,7 @@ def run_experiment(
 
 
     # Running the experiments
-    loss_NSD, penalty_NSD, ssims_NSD, dist_W_prox, WHs_NSD = run_melmo2(
+    loss_NSD, penalty_NSD, ssims_NSD, dist_W_prox, WHs_NSD, grad_norms_NSD = run_melmo2(
         D, g = g, prox = prox, T = T, T_adj = T_adj, max_iter = 2**K, lmo = lambda M : lmo_spectral(M, 1., 6), 
         original = Y,
     )
@@ -79,9 +79,10 @@ def run_experiment(
         'ssims': ssims_NSD,
         'dist_W_prox': dist_W_prox,
         'WH': WHs_NSD,
+        'grad_norms': grad_norms_NSD,
     }
     
-    loss_NSD, penalty_NSD, ssims_NSD, dist_W_prox, WHs_NSD = run_melmo2_epoch(
+    loss_NSD, penalty_NSD, ssims_NSD, dist_W_prox, WHs_NSD, grad_norms_NSD = run_melmo2_epoch(
         D, g = g, prox = prox, T = T, T_adj = T_adj, max_K = K, lmo = lambda M : lmo_l2(M, 1.), 
         original = Y,
     )
@@ -92,6 +93,7 @@ def run_experiment(
         'ssims': ssims_NSD,
         'dist_W_prox': dist_W_prox,
         'WH': WHs_NSD,
+        'grad_norms': grad_norms_NSD,
     }
     
 
@@ -172,12 +174,36 @@ def plot_smoothing_loss(results: dict):
     plt.scatter(x, results['melmo (epochs)']['dist_W_prox'][x], label = 'melmo (epochs)', marker="s")
     print(f"melmo (epochs) : {results['melmo (epochs)']['dist_W_prox'][-1]:.3e}")
     
-    plt.ylabel(r'$\|TW_k - prox_{\beta_k}(TW_k)\|_F$')
+    plt.ylabel(r'$\|TW_k - prox_{\beta_k}(TW_k)\|$')
     plt.xlabel('Iterations')
     plt.title('The proximal gap')
 
     plt.legend()
     plt.savefig(f"denoising_results/{results['dataset_name']}/proximalGap_rank.png")
+    plt.show()
+    
+def plot_norms(results: dict):
+    K = results['K']
+    scatter_period = 2**K // 20
+    norm_D = results['norm']
+
+    x = np.arange(len(results['melmo (regular)']['dist_W_prox']))[::scatter_period]
+    x = np.logspace(0, np.log10(len(results['melmo (regular)']['dist_W_prox'])-1), num=len(x), endpoint=True).astype(int)
+    
+    plt.loglog(results['melmo (regular)']['grad_norms'])
+    plt.scatter(x, results['melmo (regular)']['grad_norms'][x], label = 'melmo (regular)', marker="^")
+    print(f"melmo (regular) : {results['melmo (regular)']['grad_norms'][-1]:.3e}")
+    
+    plt.loglog(results['melmo (epochs)']['grad_norms'])
+    plt.scatter(x, results['melmo (epochs)']['grad_norms'][x], label = 'melmo (epochs)', marker="s")
+    print(f"melmo (epochs) : {results['melmo (epochs)']['grad_norms'][-1]:.3e}")
+    
+    plt.ylabel(r'$\|\nabla F_k\|_*$')
+    plt.xlabel('Iterations')
+    plt.title('The gradient norm')
+
+    plt.legend()
+    plt.savefig(f"denoising_results/{results['dataset_name']}/gradNorm_rank.png")
     plt.show()
     
 
