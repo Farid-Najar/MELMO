@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import torch
-from torch import Tensor
+from torch import Tensor, tensor
 
 from tqdm import tqdm
 from typing import Callable
@@ -124,7 +124,7 @@ def run_melmo2(
     beta = 1.5, # 1.5 is the beta for the MCP as it is 1/mu weakly convex
     p = 7/12,
     q = 1.,
-    e = 1e-3,
+    reg_coeff = 1,
     max_iter = 1_000,
     fixed_steps = False,
     original = None,
@@ -154,7 +154,7 @@ def run_melmo2(
         loss[t] = np.linalg.norm(D, 'fro')**2
         TW = T(W)
         penalty[t] = g(TW)
-        g_W = -2*D + T_adj(grad_g(TW, beta_t))
+        g_W = -2*D + reg_coeff * T_adj(grad_g(TW, beta_t))
         W = update(g_W, lmo, W, gamma_t)
         grad_norms[t] = np.linalg.norm(g_W, dual_norm_type)
         
@@ -163,7 +163,7 @@ def run_melmo2(
         
         ssims[t] = ssim(original, W, full=True, data_range=1)[0]
         concatenate_W = np.concatenate((TW[0], TW[1]))
-        dist_W_prox[t] = np.linalg.norm(concatenate_W - prox(concatenate_W, beta_t), norm_type)
+        dist_W_prox[t] = np.linalg.norm(concatenate_W - prox(concatenate_W, beta_t), 'fro')
         
         # dist_W_prox[t] = np.linalg.norm(TW[0] - prox(TW[0], beta_t), 'fro')
         # dist_W_prox[t] += np.linalg.norm(TW[1] - prox(TW[1], beta_t), 'fro')
@@ -174,6 +174,140 @@ def run_melmo2(
     # plt.semilogy(loss)
     # plt.show()
     return loss, penalty, ssims, dist_W_prox, W, grad_norms
+
+
+def run_melmo_M(
+    Y : np.ndarray,
+    M : np.ndarray,
+    g  : Callable,
+    T : Callable = lambda x : x,
+    T_adj : Callable = lambda x : x,
+    prox = spectral_prox_l1,
+    lmo = lambda M : lmo_nuclear(M, 1.),
+    gamma = 2.,
+    beta = 1.5, # 1.5 is the beta for the MCP as it is 1/mu weakly convex
+    p = 7/12,
+    q = 1/3,
+    reg_coeff = 1,
+    max_iter = 1_000,
+    fixed_steps = False,
+    original = None,
+    norm_type = 2, # spectral norm by default
+    dual_norm_type = 'nuc',
+    # store_WH_every = 1,
+    ):
+    
+    grad_g = lambda x, b : grad_gb(x, prox, b)
+        
+    X  = np.random.randn(Y.shape[0], Y.shape[1])
+    # X = Y.copy()
+    beta_t = beta if not fixed_steps else beta / max_iter**q
+    gamma_t = gamma if not fixed_steps else gamma / max_iter**p
+    # WHs = [(W, H)]
+    
+    loss = np.zeros(max_iter)
+    held_out_loss = np.zeros(max_iter)
+    penalty = np.zeros(max_iter)
+    ssims = np.zeros(max_iter)
+    dist_W_prox = np.zeros(max_iter)
+    grad_norms = np.zeros(max_iter)
+    
+    if original is None:
+        original = Y
+    for t in tqdm(range(max_iter)):
+        D = M*(X-Y)
+        loss[t] = np.linalg.norm(D, 'fro')**2
+        held_out_loss[t] = np.linalg.norm((1-M)*(X-Y), 'fro')
+        TX = T(X)
+        penalty[t] = g(TX)
+        g_W = D + reg_coeff * T_adj(grad_g(TX, beta_t))
+        X = update(g_W, lmo, X, gamma_t)
+        grad_norms[t] = np.linalg.norm(g_W, dual_norm_type)
+        
+        # if t % store_WH_every == 0:
+        #     WHs.append((W, H))
+        
+        ssims[t] = ssim(original, X, full=True, data_range=1)[0]
+        # concatenate_W = np.concatenate((TW[0], TW[1]))
+        dist_W_prox[t] = np.linalg.norm(X - prox(X, beta_t), 'fro')
+        
+        # dist_W_prox[t] = np.linalg.norm(TW[0] - prox(TW[0], beta_t), 'fro')
+        # dist_W_prox[t] += np.linalg.norm(TW[1] - prox(TW[1], beta_t), 'fro')
+        
+        beta_t = beta / (t+1)**q if not fixed_steps else beta_t
+        gamma_t = gamma / (t+1)**p if not fixed_steps else gamma_t
+        
+    # plt.semilogy(loss)
+    # plt.show()
+    return loss, held_out_loss, penalty, ssims, dist_W_prox, X, grad_norms
+
+def run_melmo_M_epoch(
+    Y : np.ndarray,
+    M : np.ndarray,
+    g  : Callable,
+    T : Callable = lambda x : x,
+    T_adj : Callable = lambda x : x,
+    prox = spectral_prox_l1,
+    lmo = lambda M : lmo_nuclear(M, 1.),
+    gamma = 2.,
+    beta = 1.5, # 1.5 is the beta for the MCP as it is 1/mu weakly convex
+    p = 2/3,
+    q = 1/3,
+    reg_coeff = 1,
+    max_K = 20,
+    max_iter = None,
+    fixed_steps = False,
+    original = None,
+    norm_type = 2, # spectral norm by default
+    dual_norm_type = 'nuc',
+    # store_WH_every = 1,
+    ):
+    
+    grad_g = lambda x, b : grad_gb(x, prox, b)
+        
+    max_iter = 2**max_K if max_iter is None else max_iter
+    # W = np.random.randn(Y.shape[0], Y.shape[1])
+    X = np.random.randn(Y.shape[0], Y.shape[1])
+    # X = Y.copy()
+    beta_t = beta
+    gamma_t = gamma
+    # WHs = [(W, H)]
+    
+    loss = np.zeros(max_iter)
+    held_out_loss = np.zeros(max_iter)
+    penalty = np.zeros(max_iter)
+    ssims = np.zeros(max_iter)
+    dist_W_prox = np.zeros(max_iter)
+    grad_norms = np.zeros(max_iter)
+    
+    if original is None:
+        original = Y
+    for l in tqdm(range(max_K)):
+        beta_t = beta / 2**(l*q)
+        gamma_t = gamma / 2**(l*p)
+        for t in range(2**l, 2**(l+1)):
+            D = M*(X - Y)
+            loss[t] = np.linalg.norm(D, 'fro')**2
+            held_out_loss[t] = np.linalg.norm((1-M)*(X-Y), 'fro')
+            penalty[t] = g(T(X))
+            g_W = D + reg_coeff * T_adj(grad_g(T(X), beta_t))
+            X = update(g_W, lmo, X, gamma_t)
+            grad_norms[t] = np.linalg.norm(g_W, dual_norm_type)
+            
+            dist_W_prox[t] = np.linalg.norm(X - prox(X, beta_t), 'fro')
+            
+            # if t % store_WH_every == 0:
+            #     WHs.append((W, H))
+            
+            ssims[t] = ssim(original, X, full=True, data_range=1)[0]
+            if (t+1) % max_iter == 0:
+                break
+        if (t+1) % max_iter == 0:
+                break 
+        
+    # plt.semilogy(loss)
+    # plt.show()
+    return loss, held_out_loss, penalty, ssims, dist_W_prox, X, grad_norms
 
 
 def run_melmo2_epoch(
@@ -187,7 +321,7 @@ def run_melmo2_epoch(
     beta = 1.5, # 1.5 is the beta for the MCP as it is 1/mu weakly convex
     p = 2/3,
     q = 1/3,
-    e = 1e-3,
+    reg_coeff = 1,
     max_K = 10,
     fixed_steps = False,
     original = None,
@@ -220,11 +354,11 @@ def run_melmo2_epoch(
             D = (Y - W)
             loss[t] = np.linalg.norm(D, 'fro')**2
             penalty[t] = g(T(W))
-            g_W = -2*D + T_adj(grad_g(T(W), beta_t))
+            g_W = -2*D + reg_coeff * T_adj(grad_g(T(W), beta_t))
             W = update(g_W, lmo, W, gamma_t)
             grad_norms[t] = np.linalg.norm(g_W, dual_norm_type)
             
-            dist_W_prox[t] = np.linalg.norm(W - prox(W, beta_t), norm_type)
+            dist_W_prox[t] = np.linalg.norm(W - prox(W, beta_t), 'fro')
             
             # if t % store_WH_every == 0:
             #     WHs.append((W, H))
@@ -339,6 +473,62 @@ def run_VS2(
     return loss, penalty, ssims, W
 
 
+def run_VS_M(
+    Y,
+    M : np.ndarray,
+    g  : Callable,
+    T : Callable = lambda x : x,
+    T_adj : Callable = lambda x : x,
+    prox = spectral_prox_l1,
+    L_gradf = 2.,
+    beta = 1.5, # 1.5 is the beta for the MCP as it is 1/mu weakly convex
+    e = 1e-3,
+    max_iter = 1_000,
+    reg_coeff = 1,
+    original = None,
+    # store_WH_every = 1,
+    ):
+    
+    grad_g = lambda x, b : grad_gb(x, prox, b)
+        
+    X = np.random.randn(Y.shape[0], Y.shape[1])
+    # W = Y.copy()
+    
+    # WHs = [(W, H)]
+    
+    beta_t = beta
+    norm_T2 = 1 #np.max(W.shape)**2
+    gamma_t = 1/(L_gradf + norm_T2/beta_t)
+    
+    loss = np.zeros(max_iter)
+    held_out_loss = np.zeros(max_iter)
+    penalty = np.zeros(max_iter)
+    ssims = np.zeros(max_iter)
+    dist_W_prox = np.zeros(max_iter)
+    grad_norms = np.zeros(max_iter)
+    
+    if original is None:
+        original = Y
+    for t in tqdm(range(max_iter)):
+        D = M*(X - Y)
+        loss[t] = np.linalg.norm(D, 'fro')**2
+        held_out_loss[t] = np.linalg.norm((1-M)*(X-Y), 'fro')
+        penalty[t] = g(T(X))
+        g_W = D + reg_coeff* T_adj(grad_g(T(X), beta_t))
+
+        X = update(g_W, lambda x : lmo_fro(x, 1), X, gamma_t)
+        
+        # if t % store_WH_every == 0:
+        #     WHs.append((W, H))  
+        ssims[t] = ssim(original, X, full=True, data_range=1)[0]
+        grad_norms[t] = np.linalg.norm(g_W, 'fro')
+        
+        beta_t = beta / (t+1)**(1/3)
+        gamma_t = 1/(L_gradf + norm_T2/beta_t)
+        
+    return loss, held_out_loss, penalty, ssims, dist_W_prox, X, grad_norms
+
+
 
 def run_subgradient_descent(
     Y,
@@ -410,8 +600,8 @@ def run_subgradient_descent(
     if isinstance(init, Callable):
         W, H = init(shape_W, shape_H)
     elif init == 'random':
-        W = 0.1 * torch.randn(*shape_W, device=device, dtype=dtype)
-        H = 0.1 * torch.randn(*shape_H, device=device, dtype=dtype)
+        W = torch.randn(*shape_W, device=device, dtype=dtype)
+        H = torch.randn(*shape_H, device=device, dtype=dtype)
     elif init == 'uniform':
         W = torch.rand(*shape_W, device=device, dtype=dtype)
         H = torch.rand(*shape_H, device=device, dtype=dtype)
@@ -552,7 +742,7 @@ def run_subgradient_descent2(
         original = Y
         
     shape_W = shapes
-    if Callable(init):
+    if callable(init):
         # W, H = init(shape_W, shape_H)
         pass
     elif init == 'random':
@@ -604,7 +794,7 @@ def run_subgradient_descent2(
         
         
         # Get step size
-        step = step_size_rule(k) if Callable(step_size_rule) else step_size_rule
+        step = step_size_rule(k) if callable(step_size_rule) else step_size_rule
         
         # Update matrices
         with torch.no_grad():
@@ -622,3 +812,155 @@ def run_subgradient_descent2(
             callback(k, W, f_val.item(), grad_norm)
     
     return loss, penalty, ssims, W.detach().numpy()
+
+def run_subgradient_descent_M(
+    Y,
+    M,
+    g,
+    shapes,
+    T : Callable = lambda x : x,
+    init='random',
+    # step_size_rule=lambda k: 1.0 / (k + 1)**(1/4),
+    step_size_rule=1e-3,
+    reg_coeff=1,
+    max_iter=1000,
+    # tol=1e-8,
+    callback=None,
+    device='cpu',
+    dtype=torch.float32,
+    seed=None,
+    original=None,
+    # store_WH_every = 1,
+    ):
+    """
+    Subgradient steepest descent for matrix factorization problems F(W, H).
+    
+    Parameters:
+    -----------
+    f : Callable
+        Objective function F(W, H) that accepts two PyTorch tensors and returns a scalar tensor
+    shapes : tuple of tuples
+        (shape_W, shape_H) where shape_W = (n_rows_W, n_cols_W), shape_H = (n_rows_H, n_cols_H)
+    init : str or Callable, optional
+        Initialization method for W and H:
+        - 'random': Normal distribution (mean=0, std=0.1)
+        - 'uniform': Uniform distribution [0, 1)
+        - 'zeros': Zero matrices
+        - Callable: Custom init function taking (shape_W, shape_H) and returning (W0, H0)
+    step_size_rule : Callable or float, optional
+        Step size rule (constant or function of iteration index k)
+    max_iter : int, optional
+        Maximum number of iterations
+    tol : float, optional
+        Tolerance for stopping based on subgradient norm
+    callback : Callable, optional
+        Function called after each iteration with signature:
+        callback(iteration, W, H, f_val, grad_norm)
+    device : str or torch.device, optional
+        Device to perform computations ('cpu' or 'cuda')
+    dtype : torch.dtype, optional
+        Data type for matrices
+    seed : int, optional
+        Random seed for reproducibility
+    
+    Returns:
+    --------
+    W : torch.Tensor
+        Optimized W matrix
+    H : torch.Tensor
+        Optimized H matrix
+    history : dict
+        Optimization history containing:
+        - 'f': list of function values
+        - 'grad_norm': list of combined gradient norms
+        - 'W': list of W matrices (if callback stores them)
+        - 'H': list of H matrices (if callback stores them)
+    """
+    # Set random seed if provided
+    if seed is not None:
+        torch.manual_seed(seed)
+        if device == 'cuda':
+            torch.cuda.manual_seed(seed)
+    
+    # Initialize matrices
+    if original is None:
+        original = Y
+        
+    shape_W = shapes
+    if callable(init):
+        # W, H = init(shape_W, shape_H)
+        pass
+    elif init == 'random':
+        X = torch.randn(*shape_W, device=device, dtype=dtype)
+        # H = 0.1 * torch.randn(*shape_H, device=device, dtype=dtype)
+    elif init == 'uniform':
+        X = torch.rand(*shape_W, device=device, dtype=dtype)
+        # H = torch.rand(*shape_H, device=device, dtype=dtype)
+    elif init == 'zeros':
+        X = torch.zeros(*shape_W, device=device, dtype=dtype)
+        # H = torch.zeros(*shape_H, device=device, dtype=dtype)
+    elif init == 'original':
+        X = torch.from_numpy(Y.copy()).to(device, dtype)
+    else:
+        raise ValueError(f"Unsupported initialization method: {init}")
+    
+    # Enable gradient tracking
+    X = X.detach().requires_grad_(True)
+    # H = H.detach().requires_grad_(True)
+    M = torch.from_numpy(M).to(device, dtype)
+    
+    # History tracking
+    loss = np.zeros(max_iter)
+    held_out_loss = np.zeros(max_iter)
+    penalty = np.zeros(max_iter)
+    ssims = np.zeros(max_iter)
+    grad_norms = np.zeros(max_iter)
+
+    # WHs = [(W.detach().numpy(), H.detach().numpy())]
+    
+    Y = torch.from_numpy(Y).to(device, dtype)
+    
+    # history = {'f': [], 'grad_norm': [], 'WH' : [(W.item(), H.item())]}
+    
+    for k in tqdm(range(max_iter)):
+        # Compute function value and gradients
+        # f_val = f(W, H)
+        D = M*(X - Y)
+        f_val = torch.norm(D, 'fro')**2
+        loss[k] = f_val.item()
+        held_out_loss[k] = torch.norm((1-M)*(X-Y), 'fro').item()
+        pen = reg_coeff * g(T(X))
+        f_val += pen
+        penalty[k] = pen.item()
+        f_val.backward()
+        
+        # Compute SSIM
+        ssims[k] = ssim(original, X.detach().numpy(), full=True, data_range=1)[0]
+        
+        # Get gradients and compute norm
+        gW = X.grad.clone()
+        # gH = H.grad.clone()
+        grad_norm = torch.norm(gW.flatten()).item()
+        
+        # Compute distance to proximal operator
+        grad_norms[k] = grad_norm
+        
+        # Get step size
+        step = step_size_rule(k) if callable(step_size_rule) else step_size_rule
+        
+        # Update matrices
+        with torch.no_grad():
+            W_new = X - step * gW
+        
+        # Prepare for next iteration (break computation graph)
+        X = W_new.detach().requires_grad_(True)
+        
+        # Store history
+        # if k % store_WH_every == 0:
+        #     WHs.append((W.detach().numpy(), H.detach().numpy()))
+        
+        # Optional callback
+        if callback is not None:
+            callback(k, X, f_val.item(), grad_norm)
+    
+    return loss, held_out_loss, penalty, ssims, None,X.detach().numpy(), grad_norms

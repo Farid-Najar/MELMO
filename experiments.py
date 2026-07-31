@@ -83,16 +83,16 @@ def run_experiment(
     # loss_NSD3, dist_W_prox_NSD3, WHs_NSD3 = run_MoreauNSD(D, rank, prox, max_iter = K, p = 1/2, q = 1/2)  
     # loss_NSD3, dist_W_prox_NSD3, WHs_NSD3 = run_MoreauNSD(D, rank, prox, max_iter = K, p = 1/2, q = 1/2)
     # loss_NSD4, dist_W_prox_NSD4, WHs_NSD4 = run_MoreauNSD(D, rank, prox, max_iter = K, p = 1/3, q = 1/2)
-    loss_NSD4, penalty_NSD4, dist_W_prox_NSD4, WHs_NSD4 = run_melmo(
-        D, g, rank, prox, max_iter = K, p = 2/3, q = 1/3, lmo = lmo, fixed_steps = False,
-        )
-    print(f'melmo (p = 2/3. q = 1/3) loss: {loss_NSD4[-1]}')
-    results['melmo (p = 2/3, q = 1/3)'] = {
-        'loss': loss_NSD4,
-        'penalty': penalty_NSD4,
-        'dist_W_prox': dist_W_prox_NSD4,
-        'WH': WHs_NSD4,
-    }
+    # loss_NSD4, penalty_NSD4, dist_W_prox_NSD4, WHs_NSD4 = run_melmo(
+    #     D, g, rank, prox, max_iter = K, p = 2/3, q = 1/3, lmo = lmo, fixed_steps = False,
+    #     )
+    # print(f'melmo (p = 2/3. q = 1/3) loss: {loss_NSD4[-1]}')
+    # results['melmo (p = 2/3, q = 1/3)'] = {
+    #     'loss': loss_NSD4,
+    #     'penalty': penalty_NSD4,
+    #     'dist_W_prox': dist_W_prox_NSD4,
+    #     'WH': WHs_NSD4,
+    # }
     
     loss_sub, penalty_sub, _, WHs_sub = run_subgradient_descent(
         D, g_torch,((m, rank), (rank, n)), max_iter = K, step_size_rule = 5e-4, 
@@ -181,12 +181,12 @@ def plot_images(results: dict):
     plt.title('melmo (p = 2/3, q = 1/4)')
     plt.show()
 
-    W, H = results['melmo (p = 2/3, q = 1/3)']['WH']
-    img = plt.imshow(norm_D*W@H)
-    img.set_cmap('gray')
-    plt.axis('off')
-    plt.title('melmo (p = 2/3, q = 1/3)')
-    plt.show()
+    # W, H = results['melmo (p = 2/3, q = 1/3)']['WH']
+    # img = plt.imshow(norm_D*W@H)
+    # img.set_cmap('gray')
+    # plt.axis('off')
+    # plt.title('melmo (p = 2/3, q = 1/3)')
+    # plt.show()
     
     # W, H = WHs_cvxNSD[-1]
     # ax[3].imshow(norm_D*W@H)
@@ -221,9 +221,9 @@ def plot_loss(results: dict, save = False):
     plt.scatter(x, results['melmo (p = 2/3, q = 1/4)']['loss'][x]/norm_D, label = 'melmo (p = 2/3. q = 1/4)', marker="v")
     print(f"melmo (p = 2/3. q = 1/4) : {results['melmo (p = 2/3, q = 1/4)']['loss'][-1]/norm_D:.3e}")
     
-    plt.loglog(results['melmo (p = 2/3, q = 1/3)']['loss']/norm_D)
-    plt.scatter(x, results['melmo (p = 2/3, q = 1/3)']['loss'][x]/norm_D, label = 'melmo (p = 2/3. q = 1/3)', marker="^")
-    print(f"melmo (p = 2/3. q = 1/3) : {results['melmo (p = 2/3, q = 1/3)']['loss'][-1]/norm_D:.3e}")
+    # plt.loglog(results['melmo (p = 2/3, q = 1/3)']['loss']/norm_D)
+    # plt.scatter(x, results['melmo (p = 2/3, q = 1/3)']['loss'][x]/norm_D, label = 'melmo (p = 2/3. q = 1/3)', marker="^")
+    # print(f"melmo (p = 2/3. q = 1/3) : {results['melmo (p = 2/3, q = 1/3)']['loss'][-1]/norm_D:.3e}")
     
     
     plt.loglog(results['melmo (p = 7/12, q = 1/3)']['loss']/norm_D)
@@ -263,25 +263,25 @@ def plot_smoothing_loss(results: dict):
     x = np.arange(len(results['variable smoothing']['dist_W_prox']))[::scatter_period]
     x = np.logspace(0, np.log10(len(results['variable smoothing']['dist_W_prox'])-1), num=len(x), endpoint=True).astype(int)
     
-    plt.loglog(results['variable smoothing']['dist_W_prox']/norm_D)
-    plt.scatter(x, results['variable smoothing']['dist_W_prox'][x]/norm_D, label = 'Variable Smoothing BW', marker="o")
-    print(f"VS : {results['variable smoothing']['dist_W_prox'][-1]/norm_D:.3e}")
+    plt.loglog(results['variable smoothing']['dist_W_prox'])
+    plt.scatter(x, results['variable smoothing']['dist_W_prox'][x], label = 'Variable Smoothing BW', marker="o")
+    print(f"VS : {results['variable smoothing']['dist_W_prox'][-1]:.3e}")
     
-    plt.loglog(results['melmo (p = 2/3, q = 1/4)']['dist_W_prox']/norm_D)
-    plt.scatter(x, results['melmo (p = 2/3, q = 1/4)']['dist_W_prox'][x]/norm_D, label = 'melmo (p = 2/3. q = 1/4)', marker="v")
-    print(f"melmo (p = 2/3. q = 1/4) : {results['melmo (p = 2/3, q = 1/4)']['dist_W_prox'][-1]/norm_D:.3e}")
+    plt.loglog(results['melmo (p = 2/3, q = 1/4)']['dist_W_prox'])
+    plt.scatter(x, results['melmo (p = 2/3, q = 1/4)']['dist_W_prox'][x], label = 'melmo (p = 2/3. q = 1/4)', marker="v")
+    print(f"melmo (p = 2/3. q = 1/4) : {results['melmo (p = 2/3, q = 1/4)']['dist_W_prox'][-1]:.3e}")
     
-    plt.loglog(results['melmo (p = 2/3, q = 1/3)']['dist_W_prox']/norm_D)
-    plt.scatter(x, results['melmo (p = 2/3, q = 1/3)']['dist_W_prox'][x]/norm_D, label = 'melmo (p = 2/3. q = 1/3)', marker="^")
-    print(f"melmo (p = 2/3. q = 1/3) : {results['melmo (p = 2/3, q = 1/3)']['dist_W_prox'][-1]/norm_D:.3e}")
+    # plt.loglog(results['melmo (p = 2/3, q = 1/3)']['dist_W_prox']/norm_D)
+    # plt.scatter(x, results['melmo (p = 2/3, q = 1/3)']['dist_W_prox'][x]/norm_D, label = 'melmo (p = 2/3. q = 1/3)', marker="^")
+    # print(f"melmo (p = 2/3. q = 1/3) : {results['melmo (p = 2/3, q = 1/3)']['dist_W_prox'][-1]/norm_D:.3e}")
     
-    plt.loglog(results['melmo (p = 7/12, q = 1/3)']['dist_W_prox']/norm_D)
-    plt.scatter(x, results['melmo (p = 7/12, q = 1/3)']['dist_W_prox'][x]/norm_D, label = 'melmo (p = 7/12. q = 1/3)', marker="s")
-    print(f"melmo (p = 7/12. q = 1/3) : {results['melmo (p = 7/12, q = 1/3)']['dist_W_prox'][-1]/norm_D:.3e}")
+    plt.loglog(results['melmo (p = 7/12, q = 1/3)']['dist_W_prox'])
+    plt.scatter(x, results['melmo (p = 7/12, q = 1/3)']['dist_W_prox'][x], label = 'melmo (p = 7/12. q = 1/3)', marker="s")
+    print(f"melmo (p = 7/12. q = 1/3) : {results['melmo (p = 7/12, q = 1/3)']['dist_W_prox'][-1]:.3e}")
     
-    plt.ylabel(r'$\|W - prox_{\beta_k}(W)\|$')
+    plt.ylabel(r'$\|W - prox_{\beta_k}(W)\|_F$')
     plt.xlabel('Iterations')
-    plt.title('The smoothing loss')
+    plt.title('Proximal Gap')
 
     plt.legend()
     plt.savefig(f"results/{results['dataset_name']}/smoothingLoss_rank_{results['rank']}.png")
@@ -311,11 +311,11 @@ def plot_primal_gap_and_penalty(
     plt.scatter(x, ls_NSD[x], label = 'melmo (p = 2/3. q = 1/4)', marker="v")
     print(f"melmo (p = 2/3. q = 1/4) : {ls_NSD[-1]:.3e}")
     
-    g_NSD3 = results['melmo (p = 2/3, q = 1/3)']['penalty']
-    ls_NSD3 = results['melmo (p = 2/3, q = 1/3)']['loss'] + g_NSD3
-    plt.loglog(ls_NSD3)  
-    plt.scatter(x, ls_NSD3[x], label = 'melmo (p = 2/3. q = 1/3)', marker="^")
-    print(f"melmo (p = 2/3. q = 1/3) : {ls_NSD3[-1]:.3e}")
+    # g_NSD3 = results['melmo (p = 2/3, q = 1/3)']['penalty']
+    # ls_NSD3 = results['melmo (p = 2/3, q = 1/3)']['loss'] + g_NSD3
+    # plt.loglog(ls_NSD3)  
+    # plt.scatter(x, ls_NSD3[x], label = 'melmo (p = 2/3. q = 1/3)', marker="^")
+    # print(f"melmo (p = 2/3. q = 1/3) : {ls_NSD3[-1]:.3e}")
     
     g_NSD2 = results['melmo (p = 7/12, q = 1/3)']['penalty']
     ls_NSD2 = results['melmo (p = 7/12, q = 1/3)']['loss'] + g_NSD2
@@ -337,7 +337,6 @@ def plot_primal_gap_and_penalty(
         & ${ls_sub[-1]:.3e}\\times10^{2}$ 
         & ${ls_VS[-1]:.3e}\\times10^{2}$ 
         & ${ls_NSD2[-1]:.3e}\\times10^{2}$
-        & ${ls_NSD3[-1]:.3e}\\times10^{2}$
         & ${ls_NSD[-1]:.3e}\\times10^{2}$
         """
         
@@ -362,9 +361,9 @@ def plot_primal_gap_and_penalty(
     plt.scatter(x, g_NSD[x], label = 'melmo (p = 2/3. q = 1/4)', marker="v")
     print(f"melmo (p = 2/3. q = 1/4) : {g_NSD[-1]:.3e}")
     
-    plt.loglog(g_NSD3)
-    plt.scatter(x, g_NSD3[x], label = 'melmo (p = 2/3. q = 1/3)', marker="^")
-    print(f"melmo (p = 2/3. q = 1/3) : {g_NSD3[-1]:.3e}")
+    # plt.loglog(g_NSD3)
+    # plt.scatter(x, g_NSD3[x], label = 'melmo (p = 2/3. q = 1/3)', marker="^")
+    # print(f"melmo (p = 2/3. q = 1/3) : {g_NSD3[-1]:.3e}")
     
     plt.loglog(g_NSD2)
     plt.scatter(x, g_NSD2[x], label = 'melmo (p = 7/12. q = 1/3)', marker="s")
@@ -400,14 +399,14 @@ def plot_images_ranks(results: dict):
         W, H = results[rank]['melmo (p = 2/3, q = 1/4)']['WH']
         ax[2].imshow(W@H)
         ax[2].set_title('melmo (p = 2/3. q = 1/4)')
-        W, H = results[rank]['melmo (p = 2/3, q = 1/3)']['WH']
-        ax[3].imshow(W@H)
-        ax[3].set_title('melmo (p = 2/3. q = 1/3)')
+        # W, H = results[rank]['melmo (p = 2/3, q = 1/3)']['WH']
+        # ax[3].imshow(W@H)
+        # ax[3].set_title('melmo (p = 2/3. q = 1/3)')
         W, H = results[rank]['melmo (p = 7/12, q = 1/3)']['WH']
-        ax[4].imshow(W@H)
-        ax[4].set_title('melmo (p = 7/12. q = 1/3)')
+        ax[3].imshow(W@H)
+        ax[3].set_title('melmo (p = 7/12. q = 1/3)')
         W, H = results[rank]['subgradient']['WH']
-        ax[5].imshow(W@H)
-        ax[5].set_title('Subgradient')  
+        ax[4].imshow(W@H)
+        ax[4].set_title('Subgradient')  
         
         plt.show()

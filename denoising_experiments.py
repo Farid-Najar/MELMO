@@ -79,7 +79,7 @@ def run_experiment(
         'WH': WHs_sub,
     }
     
-    loss_NSD, penalty_NSD, ssims_NSD, WHs_NSD = run_melmo2(
+    loss_NSD, penalty_NSD, ssims_NSD, _, WHs_NSD, _ = run_melmo2(
         D, g = g, prox = prox, T = T, T_adj = T_adj, max_iter = K, lmo = lambda M : lmo_spectral(M, 1., 6), 
         original = Y,
     )
@@ -91,7 +91,7 @@ def run_experiment(
         'WH': WHs_NSD,
     }
     
-    loss_NSD, penalty_NSD, ssims_NSD, WHs_NSD = run_melmo2(
+    loss_NSD, penalty_NSD, ssims_NSD, _, WHs_NSD, _ = run_melmo2(
         D, g = g, prox = prox, T = T, T_adj = T_adj, max_iter = K, lmo = lambda M : lmo_l2(M, 1.), 
         original = Y,
     )
@@ -103,7 +103,7 @@ def run_experiment(
         'WH': WHs_NSD,
     }
     
-    loss_NSD, penalty_NSD, ssims_NSD, WHs_NSD = run_melmo2(
+    loss_NSD, penalty_NSD, ssims_NSD, _, WHs_NSD, _ = run_melmo2(
         D, g = g, prox = prox, T = T, T_adj = T_adj, max_iter = K, lmo = lambda M : lmo_nuclear(M, 1.), 
         original = Y,
     )

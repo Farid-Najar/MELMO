@@ -21,6 +21,7 @@ def run_experiment(
     T_torch : Callable = lambda x : x,
     T_adj : Callable = lambda x : x,
     K: int = 5_000,
+    reg_coeff: float = 1,
     g: Callable = lambda W : np.sum(mcp(W)),
     g_torch: Callable = lambda W : torch.sum(mcp_torch(W)),
     prox: Callable = prox_mcp,
@@ -70,7 +71,7 @@ def run_experiment(
     # Running the experiments
     loss_NSD, penalty_NSD, ssims_NSD, dist_W_prox, WHs_NSD, grad_norms_NSD = run_melmo2(
         D, g = g, prox = prox, T = T, T_adj = T_adj, max_iter = 2**K, lmo = lambda M : lmo_spectral(M, 1., 6), 
-        original = Y,
+        original = Y, reg_coeff = reg_coeff, p= 2/3, q = 1/3, beta = 1.,
     )
     print(f'melmo (regular) loss: {loss_NSD[-1]}')
     results['melmo (regular)'] = {
@@ -83,8 +84,8 @@ def run_experiment(
     }
     
     loss_NSD, penalty_NSD, ssims_NSD, dist_W_prox, WHs_NSD, grad_norms_NSD = run_melmo2_epoch(
-        D, g = g, prox = prox, T = T, T_adj = T_adj, max_K = K, lmo = lambda M : lmo_l2(M, 1.), 
-        original = Y,
+        D, g = g, prox = prox, T = T, T_adj = T_adj, max_K = K, lmo = lambda M : lmo_spectral(M, 1., 6), 
+        original = Y, reg_coeff = reg_coeff, p= 2/3, q = 1/3, beta = 1.,
     )
     print(f'melmo (epochs) loss: {loss_NSD[-1]}')
     results['melmo (epochs)'] = {
@@ -174,7 +175,7 @@ def plot_smoothing_loss(results: dict):
     plt.scatter(x, results['melmo (epochs)']['dist_W_prox'][x], label = 'melmo (epochs)', marker="s")
     print(f"melmo (epochs) : {results['melmo (epochs)']['dist_W_prox'][-1]:.3e}")
     
-    plt.ylabel(r'$\|TW_k - prox_{\beta_k}(TW_k)\|$')
+    plt.ylabel(r'$\|TW_k - prox_{\beta_k}(TW_k)\|_F$')
     plt.xlabel('Iterations')
     plt.title('The proximal gap')
 
